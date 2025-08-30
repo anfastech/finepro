@@ -3,33 +3,33 @@
 
 import { createAdminClient } from "@/lib/appwrite";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+// import { headers } from "next/headers";
 import { OAuthProvider } from "node-appwrite";
 
 export async function signUpWithGithub() {
-	const { account } = await createAdminClient();
+  const { account } = await createAdminClient();
 
-  const origin = (await headers()).get("origin");
-  
-	const redirectUrl = await account.createOAuth2Token(
-		OAuthProvider.Github,
-		`${origin}/oauth`,
-		`${origin}/signup`,
-	);
+  //   const origin = (await headers()).get("origin");
 
-	return redirect(redirectUrl);
-};
+  const redirectUrl = await account.createOAuth2Token(
+    OAuthProvider.Github,
+    `${process.env.NEXT_PUBLIC_APP_URL}/oauth`,
+    `${process.env.NEXT_PUBLIC_APP_URL}/signup`
+  );
+
+  return redirect(redirectUrl);
+}
 
 export async function signUpWithGoogle() {
-	const { account } = await createAdminClient();
+  const { account } = await createAdminClient();
 
-  const origin = (await headers()).get("origin");
-  
-	const redirectUrl = await account.createOAuth2Token(
-		OAuthProvider.Google,
-		`${origin}/oauth`,
-		`${origin}/signup`,
-	);
+  //   const origin = (await headers()).get("origin");
 
-	return redirect(redirectUrl);
-};
+  const redirectUrl = await account.createOAuth2Token(
+    OAuthProvider.Google,
+    `${origin}/oauth`,
+    `${origin}/signup`
+  );
+
+  return redirect(redirectUrl);
+}
