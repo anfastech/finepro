@@ -2,11 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // this wasn't working as expected 
     remotePatterns: [
       {
         protocol: "https",
         hostname: "productify-ai.vercel.app",
-        pathname: "api/**/file/**",
+        pathname: "api/workspaces/file/**",
       },
       {
         protocol: "http",
