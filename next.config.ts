@@ -1,17 +1,30 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "productify-ai.vercel.app",
+        pathname: "api/**/file/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3000",
+        pathname: "api/**/file/**",
+      }
+    ],
+    // Disable image optimization warnings
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
   /* config options here */
   reactStrictMode: true,
   // Suppress React DevTools warning
   devIndicators: {
     buildActivity: false,
-  },
-  images: {
-    // Disable image optimization warnings
-    dangerouslyAllowSVG: true,
-    contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Suppress specific warnings
   // logging: {
