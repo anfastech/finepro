@@ -1,15 +1,16 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 export function generateWorkspaceFileUrl(fileId: string): string {
   return `/api/workspaces/file/${fileId}`;
 }
 
 export function generateInviteCode(length: number) {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
 
   for (let i = 0; i < length; i++) {
@@ -20,14 +21,15 @@ export function generateInviteCode(length: number) {
 }
 
 export function snakeCaseToTitleCase(str: string) {
-  return str.toLowerCase()
+  return str
+    .toLowerCase()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // not mandatory
 export function suppressWarnings() {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     // const originalWarn = console.warn;
     // console.warn = function (...args) {
     //   if (
