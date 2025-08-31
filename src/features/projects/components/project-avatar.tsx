@@ -24,7 +24,7 @@ export const ProjectAvatar = ({
                 "relative size-5 rounded-md overflow-hidden", 
                 className
             )}>
-                <Image src={`${process.env.NEXT_PUBLIC_APP_URL}/${image}`} alt={name} fill className="object-cover"/>
+                <Image src={image} alt={name} fill className="object-cover"/>
             </div>
         );
     }
