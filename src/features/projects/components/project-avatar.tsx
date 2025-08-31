@@ -24,7 +24,7 @@ export const ProjectAvatar = ({
                 "relative size-5 rounded-md overflow-hidden", 
                 className
             )}>
-                <Image src={image} alt={name} fill className="object-cover"/>
+                <Image src={image} alt={name} fill priority className="object-cover"/>
             </div>
         );
     }
