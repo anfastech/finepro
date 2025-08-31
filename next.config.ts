@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "productify-ai.vercel.app",
-        pathname: "api/workspaces/file/**",
+        pathname: "api/**/file/**",
       },
       {
         protocol: "http",
