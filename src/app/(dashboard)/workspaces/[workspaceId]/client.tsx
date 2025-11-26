@@ -23,6 +23,7 @@ import { Project } from "@/features/projects/types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Member } from "@/features/members/types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import Image from "next/image";
 
 export const WorkspaceIdClient = () => {
   const workspaceId = useWorkspaceId();
@@ -63,6 +64,7 @@ export const WorkspaceIdClient = () => {
           total={projects.documents.length}
         />
         <MembersList data={members.documents} total={members.total} />
+        {/* <Image src="https://productify-ai.vercel.app/api/workspaces/file/6889dfef0023c8440787" priority alt="jiij" fill /> */}
       </div>
     </div>
   );
