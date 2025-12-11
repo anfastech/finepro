@@ -23,7 +23,6 @@ import { Project } from "@/features/projects/types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Member } from "@/features/members/types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import Image from "next/image";
 
 export const WorkspaceIdClient = () => {
   const workspaceId = useWorkspaceId();
