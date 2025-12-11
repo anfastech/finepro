@@ -43,6 +43,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
       name: "",
+      workspaceId,
     },
   });
 
