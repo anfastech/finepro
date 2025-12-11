@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "next/link"
 import { formatDistanceToNow } from "date-fns";
 import { PlusIcon, CalendarIcon, SettingsIcon } from "lucide-react";
 
