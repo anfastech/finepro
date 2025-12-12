@@ -10,6 +10,7 @@ import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { useCreateProjectModel } from "@/features/projects/hooks/use-create-project-modal";
+import { Project } from "@/features/projects/types";
 
 
 export const Projects = () => {
@@ -27,7 +28,7 @@ export const Projects = () => {
                 <p className="text-xs uppercase text-neutral-500">Projects</p>
                 <RiAddCircleFill onClick={open} className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"/>
             </div>
-            {data?.documents.map((project) => {
+            {data?.documents.map((project: Project) => {
                 const href = `/workspaces/${workspaceId}/projects/${project.$id}`;
                 const isActive = pathname === href;
 
