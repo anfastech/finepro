@@ -6,6 +6,7 @@ import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { WorkspaceAvatar } from "@/features/workspaces/components/workspace-avatar";
 import { useCreateWorkplacesModal } from "@/features/workspaces/hooks/use-create-workplaces-modal";
+import { Workspace } from "@/features/workspaces/types";
 
 import {
   Select,
@@ -26,8 +27,8 @@ export const WorkspaceSwitcher = () => {
     router.push(`/workspaces/${id}`);
   };
 
-  workspaces?.documents.map((workspace) => {
-    console.log(`Workspace image src= ${workspace.imageUrl} ☑️ `)
+  workspaces?.documents.map((workspace: Workspace) => {
+    console.log(`Workspace image src= ${workspace.imageUrl} ☑️ `);
   });
 
   return (
@@ -44,7 +45,7 @@ export const WorkspaceSwitcher = () => {
           <SelectValue placeholder="Select a workspace" />
         </SelectTrigger>
         <SelectContent>
-          {workspaces?.documents.map((workspace) => (
+          {workspaces?.documents.map((workspace: Workspace) => (
             <SelectItem key={workspace.$id} value={workspace.$id}>
               <div className="flex justify-start items-center gap-3 font-medium">
                 <WorkspaceAvatar
