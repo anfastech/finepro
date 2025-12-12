@@ -23,9 +23,8 @@ const nextConfig: NextConfig = {
   },
   /* config options here */
   reactStrictMode: true,
-  // Suppress React DevTools warning
   devIndicators: {
-    buildActivity: false,
+    position: "bottom-right",
   },
   // Suppress specific warnings
   // logging: {
