@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 
-export function GET(
+export async function GET(
   _req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
-  return Response.json({ userId: params.userId });
+  const { userId } = await params;
+
+  return Response.json({ userId });
 }
