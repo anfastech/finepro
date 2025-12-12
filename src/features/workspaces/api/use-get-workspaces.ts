@@ -7,7 +7,7 @@ import { Workspace } from "../types";
 export const useGetWorkspaces = () => {
   const query = useQuery<Models.DocumentList<Workspace>>({
     queryKey: ["workspaces"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Models.DocumentList<Workspace>> => {
       const response = await rpc.api.workspaces.$get();
 
       if (!response.ok) {
@@ -16,7 +16,7 @@ export const useGetWorkspaces = () => {
 
       const { data } = await response.json();
 
-      return data;
+      return data as Models.DocumentList<Workspace>;
     },
   });
 

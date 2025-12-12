@@ -49,7 +49,9 @@ export const columns: ColumnDef<Task>[] = [
       );
     },
     cell: ({ row }) => {
-      const project = row.original.project;
+      const project = row.original.project as
+        | { name: string; imageUrl?: string }
+        | undefined;
 
       if (!project) {
         return <span className="text-muted-foreground">No project</span>;
@@ -81,7 +83,9 @@ export const columns: ColumnDef<Task>[] = [
       );
     },
     cell: ({ row }) => {
-      const assignee = row.original.assignee;
+      const assignee = row.original.assignee as
+        | { name: string }
+        | undefined;
 
       if (!assignee) {
         return <span className="text-muted-foreground">No assignee</span>;

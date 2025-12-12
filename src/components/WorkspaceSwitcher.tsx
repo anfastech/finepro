@@ -27,10 +27,6 @@ export const WorkspaceSwitcher = () => {
     router.push(`/workspaces/${id}`);
   };
 
-  workspaces?.documents.map((workspace: Workspace) => {
-    console.log(`Workspace image src= ${workspace.imageUrl} ☑️ `);
-  });
-
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex items-center justify-between">
