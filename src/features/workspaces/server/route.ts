@@ -1,6 +1,6 @@
 import z from "zod";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
+import { Client, ID, Query, Storage } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
@@ -9,7 +9,7 @@ import { MemberRole } from "@/features/members/types";
 
 import { generateInviteCode } from "@/lib/utils";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { DATABASE_ID, IMAGE_BUCKET_ID, MEMBERS_ID, TASKS_ID, WORKSPACES_ID } from "@/config";
+import { APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, DATABASE_ID, IMAGE_BUCKET_ID, MEMBERS_ID, TASKS_ID, WORKSPACES_ID } from "@/config";
 
 import { createWorkspaceSchema, updateWorkspaceSchema } from "../schemas";
 import { Workspace } from "../types";
@@ -18,9 +18,16 @@ import { TaskStatus } from "@/features/tasks/types";
 // Create a Hono app for workspace-related API endpoints
 const app = new Hono()
   // Endpoint to serve workspace images with authentication
-  .get("/file/:fileId", sessionMiddleware, async (c) => {
-    const storage = c.get("storage");
+  .get("/file/:fileId", async (c) => {
     const fileId = c.req.param("fileId");
+
+    // Use an admin client so public image fetches don't require the user session cookie
+    const client = new Client()
+      .setEndpoint(APPWRITE_ENDPOINT)
+      .setProject(APPWRITE_PROJECT_ID)
+      .setKey(process.env.NEXT_APPWRITE_KEY!);
+
+    const storage = new Storage(client);
     
     try {
       // Get file metadata from Appwrite storage

@@ -3,15 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 import { rpc } from "@/lib/rpc";
 
 interface useGetProjectsProps {
-    workspaceId: string;
+    workspaceId?: string;
+    enabled?: boolean;
 }
 
 export const useGetProjects = ({
     workspaceId,
+    enabled,
 }: useGetProjectsProps) => {
     const query = useQuery({
         queryKey: ["projects", workspaceId],
+        enabled: enabled ?? Boolean(workspaceId),
         queryFn: async () => {
+            if (!workspaceId) throw new Error("Missing workspaceId");
+
             const response = await rpc.api.projects.$get({
                 query: { workspaceId },
             });
