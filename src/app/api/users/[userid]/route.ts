@@ -1,14 +1,8 @@
-// export function GET(
-//     req: Request,
-//     { params }: { params: { userId: string } }
-// ) {
-//     return Response.json({ userID: params.userId });
-// }
+import { NextRequest } from "next/server";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ userId: string }> }
+export function GET(
+  _req: NextRequest,
+  { params }: { params: { userId: string } }
 ) {
-  const { userId } = await params
-  return Response.json({ userId })
+  return Response.json({ userId: params.userId });
 }
