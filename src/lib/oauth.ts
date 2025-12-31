@@ -33,3 +33,31 @@ export async function signUpWithGoogle() {
 
 	return redirect(redirectUrl);
 };
+
+export async function signInWithGoogle() {
+	const { account } = await createAdminClient();
+
+  const origin = (await headers()).get("origin");
+  
+	const redirectUrl = await account.createOAuth2Token(
+		OAuthProvider.Google,
+		`${origin}/oauth`,
+		`${origin}/signin`,
+	);
+
+	return redirect(redirectUrl);
+};
+
+export async function signInWithGithub() {
+	const { account } = await createAdminClient();
+
+  const origin = (await headers()).get("origin");
+  
+	const redirectUrl = await account.createOAuth2Token(
+		OAuthProvider.Github,
+		`${origin}/oauth`,
+		`${origin}/signin`,
+	);
+
+	return redirect(redirectUrl);
+};

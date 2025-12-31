@@ -7,8 +7,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 
-import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
-import { DottedSeparator } from "@/components/dotted-separator";
+import { signInWithGoogle, signInWithGithub } from "@/lib/oauth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -21,7 +20,6 @@ import {
 } from "@/components/ui/form";
 
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
 import { loginSchema } from "../schemas";
 import { useLogin } from "../api/use-login";
 
@@ -41,14 +39,38 @@ export const SignInCard = () => {
   };
 
   return (
-    <Card className="w-full h-full md:w-[487px] border-none shadow-none">
-      <CardHeader className="flex flex-col items-center justify-center text-center p-7">
-        <CardTitle className="text-2xl">Welcome back!</CardTitle>
+    <Card className="w-full max-w-[487px] bg-white rounded-lg shadow-lg border-none mx-auto">
+      <CardHeader className="flex flex-col items-center justify-center text-center p-6 md:p-7 pb-4">
+        <CardTitle className="text-xl md:text-2xl font-bold text-gray-900">Welcome back!</CardTitle>
       </CardHeader>
-      <div className="px-7 mb-2">
-        <DottedSeparator />
+      <CardContent className="p-6 md:p-7 pt-4 flex flex-col gap-y-4">
+        <Button
+          onClick={() => signInWithGoogle()}
+          disabled={isPending}
+          variant="secondary"
+          size="lg"
+          className="w-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+        >
+          <FcGoogle className="mr-2 size-5" />
+          Sign in with Google
+        </Button>
+        <Button
+          onClick={() => signInWithGithub()}
+          disabled={isPending}
+          variant="secondary"
+          size="lg"
+          className="w-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+        >
+          <FaGithub className="mr-2 size-5" />
+          Sign in with Github
+        </Button>
+      </CardContent>
+      <div className="px-6 md:px-7 flex items-center gap-2 md:gap-3">
+        <div className="flex-1 h-px bg-gray-300"></div>
+        <span className="text-xs md:text-sm text-gray-500 whitespace-nowrap">or Sign in with Email</span>
+        <div className="flex-1 h-px bg-gray-300"></div>
       </div>
-      <CardContent className="p-7">
+      <CardContent className="p-6 md:p-7">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -60,7 +82,8 @@ export const SignInCard = () => {
                     <Input
                       {...field}
                       type="email"
-                      placeholder="Enter email address"
+                      placeholder="Email"
+                      className="border-gray-300"
                     />
                   </FormControl>
                   <FormMessage />
@@ -76,54 +99,23 @@ export const SignInCard = () => {
                     <Input
                       {...field}
                       type="password"
-                      placeholder="Enter password"
+                      placeholder="Password"
+                      className="border-gray-300"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button disabled={isPending} size="lg" className="w-full">
+            <Button 
+              disabled={isPending} 
+              size="lg" 
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm md:text-base"
+            >
               Sign in
             </Button>
           </form>
         </Form>
-      </CardContent>
-      <div className="px-7">
-        <DottedSeparator />
-      </div>
-      <CardContent className="p-7 flex flex-col gap-y-4">
-        <Button
-          onClick={() => signUpWithGoogle()}
-          disabled={isPending}
-          variant="secondary"
-          size="lg"
-          className="w-full"
-        >
-          <FcGoogle className="mr-2 size-5" />
-          Login with Google
-        </Button>
-        <Button
-          onClick={() => signUpWithGithub()}
-          disabled={isPending}
-          variant="secondary"
-          size="lg"
-          className="w-full"
-        >
-          <FaGithub className="mr-2 size-5" />
-          Login with Github
-        </Button>
-      </CardContent>
-      <div>
-        <DottedSeparator />
-      </div>
-      <CardContent className="p-7 flex items-center justify-center">
-        <p>
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-blue-700">
-            Sign up
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );

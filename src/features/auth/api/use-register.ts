@@ -22,7 +22,8 @@ export const useRegister = () => {
             const response = await rpc.api.auth.register["$post"]({json});
 
             if (!response.ok) {
-                throw new Error("Failed to register");
+                const error = await response.json();
+                throw new Error(error.error || "Failed to register");
             }
 
             return await response.json();

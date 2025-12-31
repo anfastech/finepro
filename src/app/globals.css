@@ -129,3 +129,13 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.auth-diagonal-stripe {
+  background: repeating-linear-gradient(
+    135deg,
+    #0f1d40 0px,
+    #0f1d40 500px,
+    #14224b 500px,
+    #14224b 1000px
+  );
+}
