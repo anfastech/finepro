@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/appwrite";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { AUTH_COOKIE } from "../constants";
-import { loginSchema, sendOtpSchema, verifyOtpSchema, registerWithOtpSchema, updateNameSchema, changePasswordSchema } from "../schemas";
+import { loginSchema, sendOtpSchema, verifyOtpSchema, registerWithOtpSchema, updateNameSchema, changePasswordSchema, setPasswordSchema } from "../schemas";
 import { PUBLIC_APP_URL } from "@/config";
 
 // Helper function to generate avatar color from name
@@ -327,6 +327,26 @@ const app = new Hono()
         } catch (error: unknown) {
             const appwriteError = error as { message?: string };
             return c.json({ error: appwriteError.message || "Failed to change password" }, 400);
+        }
+    }
+)
+.post(
+    "/set-password",
+    sessionMiddleware,
+    zValidator("json", setPasswordSchema),
+    async (c) => {
+        const { password } = c.req.valid("json");
+        const user = c.get("user");
+        const { users } = await createAdminClient();
+
+        try {
+            // Set password for OAuth users
+            await users.updatePassword(user.$id, password);
+
+            return c.json({ success: true });
+        } catch (error: unknown) {
+            const appwriteError = error as { message?: string };
+            return c.json({ error: appwriteError.message || "Failed to set password" }, 400);
         }
     }
 )

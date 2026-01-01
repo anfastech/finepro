@@ -4,6 +4,8 @@ import { AUTH_COOKIE } from "@/features/auth/constants";
 import { createAdminClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { Query } from "node-appwrite";
+import { DATABASE_ID, MEMBERS_ID } from "@/config";
 
 // Helper function to generate avatar color from name
 const getAvatarColor = (name: string) => {
@@ -40,12 +42,35 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Missing fields", { status: 400 });
   }
 
-  const { account, users } = await createAdminClient();
+  const { account, users, databases } = await createAdminClient();
   const session = await account.createSession(userId, secret);
 
-  // Get user to check if avatar color needs to be stored
+  // Get user to check onboarding status
+  let needsOnboarding = false;
   try {
     const user = await users.get(userId);
+    
+    // Check if user needs onboarding:
+    // 1. Check if user has a password (OAuth users won't have one initially)
+    //    We can't directly check if password exists, but we can check if user has name
+    // 2. Check if user has a name
+    // 3. Check if user has at least one workspace
+    
+    const hasName = user.name && user.name.trim() !== "";
+    
+    // Check if user has workspaces
+    const members = await databases.listDocuments(
+      DATABASE_ID,
+      MEMBERS_ID,
+      [Query.equal("userId", userId)]
+    );
+    const hasWorkspace = members.documents.length > 0;
+    
+    // OAuth users typically won't have passwords set initially
+    // We'll check this on the client side by attempting to set password
+    // For now, if user doesn't have name or workspace, they need onboarding
+    needsOnboarding = !hasName || !hasWorkspace;
+    
     // If user has a name but no avatar color stored, generate and store it
     if (user.name && !user.prefs?.avatarColor) {
       const avatarColor = getAvatarColor(user.name);
@@ -57,8 +82,8 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    // If we can't get user or update prefs, continue anyway
-    // The session creation is the critical part
+    // If we can't get user info, assume onboarding is needed for safety
+    needsOnboarding = true;
   }
 
   (await cookies()).set(AUTH_COOKIE, session.secret, {
@@ -68,5 +93,10 @@ export async function GET(request: NextRequest) {
     secure: true,
   });
 
-  return NextResponse.redirect(`${request.nextUrl.origin}/`);
+  // Redirect to onboarding if setup is incomplete, otherwise to dashboard
+  const redirectUrl = needsOnboarding 
+    ? `${request.nextUrl.origin}/onboarding`
+    : `${request.nextUrl.origin}/`;
+
+  return NextResponse.redirect(redirectUrl);
 }

@@ -13,10 +13,11 @@ import { DottedSeparator } from "@/components/dotted-separator";
 
 import { useLogout } from "../api/use-logout";
 import { useCurrent } from "../api/use-current";
-import { Loader, LogOut, User, Lock } from "lucide-react";
+import { Loader, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
 import { EditNameDialog } from "./EditNameDialog";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { UserSettingsDialog } from "./UserSettingsDialog";
 
 // Extended color palette with light backgrounds and darker text
 const avatarColors = [
@@ -51,6 +52,7 @@ export const UserBtn = () => {
   const { mutate: logout } = useLogout();
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [userSettingsOpen, setUserSettingsOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -110,18 +112,11 @@ export const UserBtn = () => {
           </div>
           <DottedSeparator className="mb-1" />
           <DropdownMenuItem 
-              onClick={() => setEditNameOpen(true)}
+              onClick={() => setUserSettingsOpen(true)}
               className="h-10 flex items-center justify-center text-neutral-700 font-medium cursor-pointer"
           >
-              <User className="size-4 mr-2" />
-              Edit Name
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-              onClick={() => setChangePasswordOpen(true)}
-              className="h-10 flex items-center justify-center text-neutral-700 font-medium cursor-pointer"
-          >
-              <Lock className="size-4 mr-2" />
-              Change Password
+              <Settings className="size-4 mr-2" />
+              User Settings
           </DropdownMenuItem>
           <DropdownMenuItem 
               onClick={() => logout()}
@@ -140,6 +135,11 @@ export const UserBtn = () => {
       <ChangePasswordDialog 
         open={changePasswordOpen} 
         onOpenChange={setChangePasswordOpen}
+      />
+      <UserSettingsDialog
+        open={userSettingsOpen}
+        onOpenChange={setUserSettingsOpen}
+        currentName={name || ""}
       />
     </>
   );
