@@ -376,129 +376,205 @@ const app = new Hono()
           const thisMonthEnd = endOfMonth(now);
           const lastMonthStart = startOfMonth(subMonths(now, 1));
           const lastMonthEnd = endOfMonth(subMonths(now, 1));
-  
-          const thisMonthTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-            ]
-          );
-  
-          const lastMonthTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-            ]
-          );
-  
+
+          // Execute all database queries in parallel for better performance
+          // Wrap each query in a try-catch to prevent one failure from blocking all
+          const queryPromises = [
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                // #region agent log
+                fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'workspaces/server/route.ts:397',message:'Query 1 failed',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 2 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.equal("assigneeId", member.$id),
+                    Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 3 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.equal("assigneeId", member.$id),
+                    Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 4 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.notEqual("status", TaskStatus.DONE),
+                    Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 5 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.notEqual("status", TaskStatus.DONE),
+                    Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 6 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.equal("status", TaskStatus.DONE),
+                    Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 7 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.equal("status", TaskStatus.DONE),
+                    Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 8 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.notEqual("status", TaskStatus.DONE),
+                    Query.lessThan("dueDate", now.toISOString()),
+                    Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 9 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })(),
+            (async () => {
+              try {
+                return await databases.listDocuments(
+                  DATABASE_ID,
+                  TASKS_ID,
+                  [
+                    Query.equal("workspaceId", workspaceId),
+                    Query.notEqual("status", TaskStatus.DONE),
+                    Query.lessThan("dueDate", now.toISOString()),
+                    Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
+                    Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
+                  ]
+                );
+              } catch (error) {
+                console.error("Analytics query 10 failed:", error);
+                return { total: 0, documents: [] };
+              }
+            })()
+          ];
+
+          const [
+            thisMonthTasks,
+            lastMonthTasks,
+            thisMonthAssignedTasks,
+            lastMonthAssignedTasks,
+            thisMonthIncompleteTasks,
+            lastMonthIncompleteTasks,
+            thisMonthCompletedTasks,
+            lastMonthCompletedTasks,
+            thisMonthOverdueTasks,
+            lastMonthOverdueTasks
+          ] = await Promise.all(queryPromises);
+
           const taskCount = thisMonthTasks.total;
           const taskDifference = taskCount - lastMonthTasks.total;
-  
-          const thisMonthAssignedTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.equal("assigneeId", member.$id),
-              Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-            ]
-          );
-  
-          const lastMonthAssignedTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.equal("assigneeId", member.$id),
-              Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-            ]
-          );
-  
           const assignedTaskCount = thisMonthAssignedTasks.total;
           const assignedTaskDifference = assignedTaskCount - lastMonthAssignedTasks.total;
-  
-          const thisMonthIncompleteTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.notEqual("status", TaskStatus.DONE),
-              Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-            ]
-          );
-  
-          const lastMonthIncompleteTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.notEqual("status", TaskStatus.DONE),
-              Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-            ]
-          );
-  
           const incompleteTaskCount = thisMonthIncompleteTasks.total;
           const incompleteTaskDifference = incompleteTaskCount - lastMonthIncompleteTasks.total;
-  
-          const thisMonthCompletedTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.equal("status", TaskStatus.DONE),
-              Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-            ]
-          );
-  
-          const lastMonthCompletedTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.equal("status", TaskStatus.DONE),
-              Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-            ]
-          );
-  
           const completedTaskCount = thisMonthCompletedTasks.total;
           const completedTaskDifference = completedTaskCount - lastMonthCompletedTasks.total;
-  
-          const thisMonthOverdueTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.notEqual("status", TaskStatus.DONE),
-              Query.lessThan("dueDate", now.toISOString()),
-              Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-            ]
-          );
-  
-          const lastMonthOverdueTasks = await databases.listDocuments(
-            DATABASE_ID,
-            TASKS_ID,
-            [
-              Query.equal("workspaceId", workspaceId),
-              Query.notEqual("status", TaskStatus.DONE),
-              Query.lessThan("dueDate", now.toISOString()),
-              Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-              Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-            ]
-          );
-  
           const overdueTaskCount = thisMonthOverdueTasks.total;
           const overdueTaskDifference = overdueTaskCount - lastMonthOverdueTasks.total;
   

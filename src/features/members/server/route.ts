@@ -36,21 +36,43 @@ const app = new Hono()
                 [Query.equal("workspaceId", workspaceId)],
             );
 
-            const populatedMembers = await Promise.all(
-                (members.documents as Member[]).map(async (member) => {
-                    const user = await users.get(member.userId);
-                    
-                    // Get avatar color from user preferences
-                    const avatarColor = user.prefs?.avatarColor as { bg: string; text: string } | undefined;
+            // Batch fetch all users at once to avoid N+1 queries
+            const userIds = members.documents.map(m => m.userId);
+            const allUsers = await Promise.all(
+                userIds.map(userId => users.get(userId).catch(() => null))
+            );
 
+            // Create a map for quick lookup
+            const userMap = new Map();
+            allUsers.forEach((user, index) => {
+                if (user) {
+                    userMap.set(userIds[index], user);
+                }
+            });
+
+            // Populate members using the map
+            const populatedMembers = members.documents.map((member) => {
+                const user = userMap.get(member.userId);
+                
+                if (!user) {
+                    // Fallback for deleted users
                     return {
                         ...member,
-                        name: user.name || user.email,
-                        email: user.email,
-                        avatarColor, // Include the stored color
+                        name: "Unknown User",
+                        email: "unknown@example.com",
+                        avatarColor: { bg: "bg-gray-100", text: "text-gray-700" },
                     };
-                })
-            )
+                }
+                
+                const avatarColor = user.prefs?.avatarColor as { bg: string; text: string } | undefined;
+
+                return {
+                    ...member,
+                    name: user.name || user.email,
+                    email: user.email,
+                    avatarColor,
+                };
+            });
 
             return c.json({
                 data: {

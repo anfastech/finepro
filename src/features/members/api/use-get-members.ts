@@ -21,7 +21,9 @@ export const useGetMembers = ({
             const { data } = await response.json();
 
             return data;
-        }
+        },
+        staleTime: 10 * 60 * 1000, // 10 minutes - members don't change often
+        gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     });
 
     return query;

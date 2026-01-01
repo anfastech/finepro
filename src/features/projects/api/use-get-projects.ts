@@ -31,6 +31,8 @@ export const useGetProjects = ({
 
       return data;
     },
+    staleTime: 10 * 60 * 1000, // 10 minutes - projects don't change often
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   return query;

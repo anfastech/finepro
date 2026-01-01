@@ -52,7 +52,9 @@ export const useGetTasks = ({
             const tasks: Task[] = raw.documents ?? [];
 
             return tasks;
-        }
+        },
+        staleTime: 1 * 60 * 1000, // 1 minute - tasks change more frequently
+        gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
     });
 
     return query;

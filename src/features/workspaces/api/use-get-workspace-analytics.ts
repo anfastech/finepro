@@ -26,7 +26,9 @@ export const useGetWorkspaceAnalytics = ({
             const { data } = await response.json();
 
             return data;
-        }
+        },
+        staleTime: 2 * 60 * 1000, // 2 minutes - analytics can be slightly stale
+        gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     });
 
     return query;

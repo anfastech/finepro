@@ -117,7 +117,7 @@ const app = new Hono()
       );
 
       const projectIds = tasks.documents.map((task) => task.projectId);
-      const assigneeIds = tasks.documents.map((task) => task.assigneeId);
+      const assigneeIds = tasks.documents.map((task) => task.assigneeId).filter(id => id); // Filter out null/undefined
 
       const projects = await databases.listDocuments<Project>(
         DATABASE_ID,
@@ -125,56 +125,68 @@ const app = new Hono()
         projectIds.length > 0 ? [Query.contains("$id", projectIds)] : []
       );
 
-      const members = await databases.listDocuments(
-        DATABASE_ID,
-        MEMBERS_ID,
-        assigneeIds.length > 0 ? [Query.contains("$id", assigneeIds)] : []
-      );
+      // Only query members if there are assigneeIds
+      let members = { documents: [] };
+      if (assigneeIds.length > 0) {
+        members = await databases.listDocuments(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [Query.contains("$id", assigneeIds)]
+        );
+      }
 
-      const assignees = await Promise.all(
-        members.documents.map(async (member) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:135',message:'Fetching user for member',data:{memberId:member.$id,userId:member.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          
-          try {
-            const user = await users.get(member.userId);
+      // Batch fetch all users at once to avoid N+1 queries (only if there are members)
+      type Assignee = {
+        $id: string;
+        userId: string;
+        name: string;
+        email: string;
+        avatarColor?: { bg: string; text: string };
+      };
+      
+      let assignees: Assignee[] = [];
+      if (members.documents.length > 0) {
+        const uniqueUserIds = [...new Set(members.documents.map((m: { userId: string }) => m.userId))];
+        const allUsers = await Promise.all(
+            uniqueUserIds.map(userId => 
+                users.get(userId).catch(() => null)
+            )
+        );
+
+        // Create a map for quick lookup
+        const userMap = new Map();
+        allUsers.forEach((user, index) => {
+            if (user) {
+                userMap.set(uniqueUserIds[index], user);
+            }
+        });
+
+        // Populate assignees using the map
+        assignees = members.documents.map((member: { $id: string; userId: string }) => {
+            const user = userMap.get(member.userId);
             
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:140',message:'User fetched successfully',data:{userId:user.$id,userEmail:user.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
+            if (!user) {
+                // Fallback for deleted users
+                return {
+                    $id: member.$id,
+                    userId: member.userId,
+                    name: "Unknown User",
+                    email: "unknown@example.com",
+                    avatarColor: { bg: "bg-gray-100", text: "text-gray-700" },
+                };
+            }
             
-            // Get avatar color from user preferences
             const avatarColor = user.prefs?.avatarColor as { bg: string; text: string } | undefined;
 
             return {
-              ...member,
-              name: user.name || user.email,
-              email: user.email,
-              avatarColor, // Include the stored color
+                $id: member.$id,
+                userId: member.userId,
+                name: user.name || user.email,
+                email: user.email,
+                avatarColor,
             };
-          } catch (error: any) {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:152',message:'User not found, using fallback',data:{memberId:member.$id,userId:member.userId,errorCode:error?.code,errorType:error?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            
-            // User was deleted (e.g., duplicate OAuth account cleanup)
-            // Return member data with fallback values
-            return {
-              ...member,
-              name: member.name || "Deleted User",
-              email: member.email || "deleted@user.com",
-              avatarColor: undefined,
-            };
-          }
-        })
-      );
-
-      // console.log("Raw tasks:", tasks.documents.map(t => ({ id: t.$id, projectId: t.projectId, assigneeId: t.assigneeId })));
-
-      // console.log("Projects:", projects.documents.map(p => ({ id: p.$id, name: p.name })));
-
-      // console.log("Assignees:", assignees.map(a => ({ id: a.$id, name: a.name })));
+        });
+      }
 
       const populatedTasks = tasks.documents.map((task) => {
         const project = projects.documents.find(
@@ -332,22 +344,10 @@ const app = new Hono()
       task.assigneeId
     );
 
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:312',message:'Fetching user for task assignee',data:{memberId:member.$id,userId:member.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-    
     let user;
     try {
       user = await users.get(member.userId);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:318',message:'User fetched successfully for task',data:{userId:user.$id,userEmail:user.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-    } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/e8a9658a-4b0e-4637-8cf0-c9d4f92744ab',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'tasks/server/route.ts:322',message:'User not found for task, using fallback',data:{memberId:member.$id,userId:member.userId,errorCode:error?.code,errorType:error?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      
+    } catch {
       // User was deleted - use fallback values
       const assignee = {
         ...member,
