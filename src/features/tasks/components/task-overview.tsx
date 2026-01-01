@@ -34,6 +34,7 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
             <MemberAvatar
               name={task.assignee?.name || task.assignee?.email || "Unknown"}
               className="size-6"
+              avatarColor={task.assignee?.avatarColor}
             />
             <p className="text-sm font-medium">
               {task.assignee?.name || task.assignee?.email || "Unknown"}

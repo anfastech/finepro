@@ -84,7 +84,7 @@ export const columns: ColumnDef<Task>[] = [
     },
     cell: ({ row }) => {
       const assignee = row.original.assignee as
-        | { name: string }
+        | { name: string; avatarColor?: { bg: string; text: string } }
         | undefined;
 
       if (!assignee) {
@@ -97,6 +97,7 @@ export const columns: ColumnDef<Task>[] = [
             className="size-6"
             fallbackClassName="text-xs"
             name={assignee.name}
+            avatarColor={assignee.avatarColor}
           />
           <p className="line-clamp-1">{assignee.name}</p>
         </div>

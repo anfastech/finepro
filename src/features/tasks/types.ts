@@ -24,5 +24,9 @@ export type Task = Models.Document & {
     assignee?: {
         name: string;
         email?: string;
+        avatarColor?: {
+            bg: string;
+            text: string;
+        };
     };
 };

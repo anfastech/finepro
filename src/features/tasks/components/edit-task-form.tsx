@@ -38,7 +38,7 @@ import { useUpdateTask } from "../api/use-update-task";
 interface EditTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string; name: string; imageUrl: string }[];
-  memberOptions: { id: string; name: string }[];
+  memberOptions: { id: string; name: string; avatarColor?: { bg: string; text: string } }[];
   initialValues: Task;
 }
 
@@ -138,6 +138,7 @@ export const EditTaskForm = ({
                               <MemberAvatar
                                 className="size-6"
                                 name={member.name}
+                                avatarColor={member.avatarColor}
                               />
                               {member.name}
                             </div>

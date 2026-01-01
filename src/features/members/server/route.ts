@@ -39,11 +39,15 @@ const app = new Hono()
             const populatedMembers = await Promise.all(
                 (members.documents as Member[]).map(async (member) => {
                     const user = await users.get(member.userId);
+                    
+                    // Get avatar color from user preferences
+                    const avatarColor = user.prefs?.avatarColor as { bg: string; text: string } | undefined;
 
                     return {
                         ...member,
                         name: user.name || user.email,
                         email: user.email,
+                        avatarColor, // Include the stored color
                     };
                 })
             )

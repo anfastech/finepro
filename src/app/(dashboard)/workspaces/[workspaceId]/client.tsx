@@ -198,6 +198,7 @@ export const MembersList = ({ data, total }: MembersListProps) => {
                   <MemberAvatar
                     className="size-12"
                     name={member.name || member.email || ''}
+                    avatarColor={member.avatarColor}
                   />
                   <div className="flex flex-col items-center overflow-hidden">
                     <p className="text-lg font-medium line-clamp-1">

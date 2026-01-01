@@ -6,8 +6,35 @@ import { createAdminClient } from "@/lib/appwrite";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { AUTH_COOKIE } from "../constants";
-import { loginSchema, sendOtpSchema, verifyOtpSchema, registerWithOtpSchema } from "../schemas";
+import { loginSchema, sendOtpSchema, verifyOtpSchema, registerWithOtpSchema, updateNameSchema, changePasswordSchema } from "../schemas";
 import { PUBLIC_APP_URL } from "@/config";
+
+// Helper function to generate avatar color from name
+const getAvatarColor = (name: string) => {
+    const avatarColors = [
+        { bg: "bg-blue-100", text: "text-blue-700" },
+        { bg: "bg-green-100", text: "text-green-700" },
+        { bg: "bg-purple-100", text: "text-purple-700" },
+        { bg: "bg-pink-100", text: "text-pink-700" },
+        { bg: "bg-orange-100", text: "text-orange-700" },
+        { bg: "bg-indigo-100", text: "text-indigo-700" },
+        { bg: "bg-teal-100", text: "text-teal-700" },
+        { bg: "bg-red-100", text: "text-red-700" },
+        { bg: "bg-yellow-100", text: "text-yellow-700" },
+        { bg: "bg-cyan-100", text: "text-cyan-700" },
+        { bg: "bg-amber-100", text: "text-amber-700" },
+        { bg: "bg-emerald-100", text: "text-emerald-700" },
+        { bg: "bg-violet-100", text: "text-violet-700" },
+        { bg: "bg-rose-100", text: "text-rose-700" },
+        { bg: "bg-sky-100", text: "text-sky-700" },
+        { bg: "bg-lime-100", text: "text-lime-700" },
+    ];
+    
+    const hash = name.split('').reduce((acc, char) => {
+        return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    return avatarColors[Math.abs(hash) % avatarColors.length];
+};
 
 const app = new Hono()
 .get(
@@ -190,6 +217,15 @@ const app = new Hono()
             await users.updateName(userId, name);
             await users.updatePassword(userId, password);
             
+            // Generate and store avatar color in user preferences
+            const avatarColor = getAvatarColor(name);
+            await users.updatePrefs(userId, {
+                avatarColor: {
+                    bg: avatarColor.bg,
+                    text: avatarColor.text,
+                }
+            });
+            
             // Create session
             const session = await account.createEmailPasswordSession(
               email,
@@ -220,6 +256,77 @@ const app = new Hono()
             }
             
             return c.json({ error: appwriteError.message || "Failed to register" }, 400);
+        }
+    }
+)
+.post(
+    "/update-name",
+    sessionMiddleware,
+    zValidator("json", updateNameSchema),
+    async (c) => {
+        const { name } = c.req.valid("json");
+        const user = c.get("user");
+        const { users } = await createAdminClient();
+
+        try {
+            // Update user name
+            await users.updateName(user.$id, name);
+
+            // Only generate and store avatar color if it doesn't exist
+            // Do NOT regenerate if color already exists - keep the original color assigned at account creation
+            const userPrefs = user.prefs as { avatarColor?: { bg: string; text: string } } | undefined;
+            if (!userPrefs?.avatarColor) {
+                const avatarColor = getAvatarColor(name);
+                await users.updatePrefs(user.$id, {
+                    avatarColor: {
+                        bg: avatarColor.bg,
+                        text: avatarColor.text,
+                    }
+                });
+            }
+            // If color already exists, do nothing - keep the existing color
+
+            // Get updated user data
+            const updatedUser = await users.get(user.$id);
+
+            return c.json({ data: updatedUser });
+        } catch (error: unknown) {
+            const appwriteError = error as { message?: string };
+            return c.json({ error: appwriteError.message || "Failed to update name" }, 400);
+        }
+    }
+)
+.post(
+    "/change-password",
+    sessionMiddleware,
+    zValidator("json", changePasswordSchema),
+    async (c) => {
+        const { currentPassword, newPassword } = c.req.valid("json");
+        const user = c.get("user");
+        const account = c.get("account");
+        const { users } = await createAdminClient();
+
+        try {
+            // Verify current password by attempting to create a session
+            let tempSession;
+            try {
+                tempSession = await account.createEmailPasswordSession(user.email, currentPassword);
+            } catch {
+                return c.json({ error: "Current password is incorrect" }, 400);
+            }
+
+            // Delete the temporary session used for verification
+            if (tempSession) {
+                await account.deleteSession(tempSession.$id);
+            }
+
+            // If verification succeeds, update to new password
+            await users.updatePassword(user.$id, newPassword);
+
+            return c.json({ success: true });
+        } catch (error: unknown) {
+            const appwriteError = error as { message?: string };
+            return c.json({ error: appwriteError.message || "Failed to change password" }, 400);
         }
     }
 )

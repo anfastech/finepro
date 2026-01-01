@@ -38,7 +38,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
           </div>
           <div className="flex-1 flex justify-end items-center gap-2 md:gap-3">
             <span className="text-white text-xs md:text-sm hidden sm:inline">
-              Already have an account?
+              {isSignIn ? "Don't have an account?" : "Already have an account?"}
             </span>
             <Button 
               asChild 

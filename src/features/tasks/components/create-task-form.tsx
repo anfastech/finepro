@@ -39,7 +39,7 @@ import { useCreateTask } from "../api/use-create-task";
 interface CreateTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string, name: string, imageUrl: string  }[];
-  memberOptions: { id: string, name: string }[];
+  memberOptions: { id: string, name: string; avatarColor?: { bg: string; text: string } }[];
 }
 
 export const CreateTaskForm = ({ 
@@ -137,6 +137,7 @@ export const CreateTaskForm = ({
                               <MemberAvatar
                                 className="size-6"
                                 name={member.name}
+                                avatarColor={member.avatarColor}
                               />
                               {member.name}
                             </div>

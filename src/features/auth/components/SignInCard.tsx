@@ -49,7 +49,7 @@ export const SignInCard = () => {
           disabled={isPending}
           variant="secondary"
           size="lg"
-          className="w-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+          className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
         >
           <FcGoogle className="mr-2 size-5" />
           Sign in with Google
@@ -59,7 +59,7 @@ export const SignInCard = () => {
           disabled={isPending}
           variant="secondary"
           size="lg"
-          className="w-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+          className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
         >
           <FaGithub className="mr-2 size-5" />
           Sign in with Github
@@ -83,7 +83,7 @@ export const SignInCard = () => {
                       {...field}
                       type="email"
                       placeholder="Email"
-                      className="border-gray-300"
+                      className="border border-gray/20 shadow-none rounded-md"
                     />
                   </FormControl>
                   <FormMessage />
@@ -100,7 +100,7 @@ export const SignInCard = () => {
                       {...field}
                       type="password"
                       placeholder="Password"
-                      className="border-gray-300"
+                      className="border border-gray/20 shadow-none rounded-md"
                     />
                   </FormControl>
                   <FormMessage />

@@ -36,3 +36,16 @@ export const registerWithOtpSchema = z.object({
     message: "Passwords don't match",
     path: ["confirmPassword"],
 });
+
+export const updateNameSchema = z.object({
+    name: z.string().trim().min(1, "Name is required"),
+});
+
+export const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    confirmPassword: z.string().min(8, "Confirm password must be at least 8 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+});

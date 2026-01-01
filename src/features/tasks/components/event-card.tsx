@@ -54,6 +54,7 @@ export const EventCard = ({
                 <div className="flex items-center gap-x-1">
                     <MemberAvatar
                         name={assignee?.name || assignee?.email || "Unknown"}
+                        avatarColor={(assignee as Member)?.avatarColor}
                     />
                     <div className="size-1 rounded-full bg-neutral-300" />
                     <ProjectAvatar

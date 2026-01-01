@@ -12,4 +12,8 @@ export type Member = Models.Document & {
     role: MemberRole;
     name?: string;
     email?: string;
+    avatarColor?: {
+        bg: string;
+        text: string;
+    };
 };
