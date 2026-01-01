@@ -2,6 +2,9 @@
 
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
@@ -25,6 +28,19 @@ import { useLogin } from "../api/use-login";
 
 export const SignInCard = () => {
   const { mutate, isPending } = useLogin();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const email = searchParams.get("email");
+    
+    if (error === "account_exists" && email) {
+      toast.error(
+        `An account with ${email} already exists. Please sign in with your existing account.`,
+        { duration: 5000 }
+      );
+    }
+  }, [searchParams]);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),

@@ -4,7 +4,7 @@ import { AUTH_COOKIE } from "@/features/auth/constants";
 import { createAdminClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { Query } from "node-appwrite";
+import { Query, ID } from "node-appwrite";
 import { DATABASE_ID, MEMBERS_ID } from "@/config";
 
 // Helper function to generate avatar color from name
@@ -43,6 +43,85 @@ export async function GET(request: NextRequest) {
   }
 
   const { account, users, databases } = await createAdminClient();
+  
+  // Get the newly created OAuth user to check for duplicate email
+  let oauthUser;
+  try {
+    oauthUser = await users.get(userId);
+  } catch {
+    return new NextResponse("Failed to get user", { status: 500 });
+  }
+
+  // Check if another user with the same email already exists
+  if (oauthUser.email) {
+    try {
+      const allUsers = await users.list();
+      const existingUser = allUsers.users.find(
+        (u) => u.email && u.email.toLowerCase().trim() === oauthUser.email.toLowerCase().trim() && u.$id !== userId
+      );
+
+      if (existingUser) {
+        // User with this email already exists - log them into existing account
+        // Delete the newly created OAuth account
+        try {
+          await users.delete(userId);
+        } catch (deleteError) {
+          console.error("Failed to delete duplicate OAuth user:", deleteError);
+        }
+        
+        // Check if existing user needs onboarding
+        const hasName = existingUser.name && existingUser.name.trim() !== "";
+        const members = await databases.listDocuments(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [Query.equal("userId", existingUser.$id)]
+        );
+        const hasWorkspace = members.documents.length > 0;
+        const needsOnboarding = !hasName || !hasWorkspace;
+        
+        // Create a session for the existing user using temporary password approach
+        // This is similar to how OTP verification works in the auth route
+        try {
+          // Check if existing user has a password set
+          // If they do, we can't easily create a session without knowing the password
+          // If they don't (OAuth-only user), we can set a temp password and create a session
+          
+          // Try to create a session by setting a temporary password
+          // This works for OAuth users who don't have passwords set
+          const tempPassword = ID.unique();
+          await users.updatePassword(existingUser.$id, tempPassword);
+          
+          // Create email/password session with temp password
+          const existingSession = await account.createEmailPasswordSession(existingUser.email, tempPassword);
+          
+          (await cookies()).set(AUTH_COOKIE, existingSession.secret, {
+            path: "/",
+            httpOnly: true,
+            sameSite: "strict",
+            secure: true,
+          });
+          
+          // Redirect based on onboarding status
+          const redirectUrl = needsOnboarding 
+            ? `${request.nextUrl.origin}/onboarding`
+            : `${request.nextUrl.origin}/`;
+          
+          return NextResponse.redirect(redirectUrl);
+        } catch (sessionError: unknown) {
+          // If we can't create a session (e.g., user has password set), redirect to signin
+          console.error("Failed to create session for existing user:", sessionError);
+          const signinUrl = new URL(`${request.nextUrl.origin}/signin`);
+          signinUrl.searchParams.set("error", "account_exists");
+          signinUrl.searchParams.set("email", oauthUser.email);
+          return NextResponse.redirect(signinUrl.toString());
+        }
+      }
+    } catch (error) {
+      // If we can't check for duplicates, continue with normal flow
+      console.error("Error checking for duplicate users:", error);
+    }
+  }
+
   const session = await account.createSession(userId, secret);
 
   // Get user to check onboarding status
@@ -81,7 +160,7 @@ export async function GET(request: NextRequest) {
         }
       });
     }
-  } catch (error) {
+  } catch {
     // If we can't get user info, assume onboarding is needed for safety
     needsOnboarding = true;
   }
