@@ -17,7 +17,7 @@ export const useChangePassword = () => {
             const response = await rpc.api.auth["change-password"]["$post"]({json});
 
             if (!response.ok) {
-                const error = await response.json();
+                const error = await response.json() as { error?: string };
                 throw new Error(error.error || "Failed to change password");
             }
 

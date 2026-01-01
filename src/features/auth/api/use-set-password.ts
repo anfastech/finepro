@@ -17,7 +17,7 @@ export const useSetPassword = () => {
             const response = await rpc.api.auth["set-password"]["$post"]({json});
 
             if (!response.ok) {
-                const error = await response.json();
+                const error = await response.json() as { error?: string };
                 throw new Error(error.error || "Failed to set password");
             }
 

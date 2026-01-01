@@ -108,9 +108,16 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-32 text-center"
                 >
-                  No results.
+                  <div className="flex flex-col items-center justify-center gap-2 py-4">
+                    <p className="text-sm font-medium text-gray-900">No tasks found</p>
+                    <p className="text-xs text-muted-foreground">
+                      {table.getColumn("name")?.getFilterValue()
+                        ? "Try adjusting your filters"
+                        : "Create your first task to get started"}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

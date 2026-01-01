@@ -23,7 +23,7 @@ export const MobileSidebar = () => {
                     <MenuIcon className="size-4 text-neutral-500" />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0">
+            <SheetContent side="left" className="p-0 w-[264px] sm:w-[280px] bg-[#1e3a5f] border-r border-white/10">
                 <Sidebar />
             </SheetContent>
         </Sheet>

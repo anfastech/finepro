@@ -8,7 +8,7 @@ export default async function Home() {
   if (!user) redirect("/signin");
 
   // Check if user needs onboarding
-  const hasName = user.name && user.name.trim() !== "";
+  const hasName = user?.name && user.name.trim() !== "";
   const workspaces = await getWorkspaces();
   const hasWorkspace = workspaces.documents.length > 0;
 

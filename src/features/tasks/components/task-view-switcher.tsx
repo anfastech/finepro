@@ -16,6 +16,7 @@ import { columns } from "./columns";
 import { DataTable } from "./data-table";
 import { DataKanban } from "./data-kanban";
 import { DataCalendar } from "./data-calendar";
+import { DataWeeklySchedule } from "./data-weekly-schedule";
 
 import { useGetTasks } from "../api/use-get-tasks";
 import { useTaskFilters } from "../hooks/use-task-filters";
@@ -69,6 +70,9 @@ export const TaskViewSwitcher = ({
       <div className="h-full flex flex-col overflow-auto p-4">
         <div className="flex flex-col gap-y-2 lg:flex-row justify-between items-center">
           <TabsList className="w-full lg:w-auto">
+            <TabsTrigger className="h-8 w-full lg:w-auto" value="schedule">
+              Schedule
+            </TabsTrigger>
             <TabsTrigger className="h-8 w-full lg:w-auto" value="table">
               Table
             </TabsTrigger>
@@ -93,6 +97,9 @@ export const TaskViewSwitcher = ({
           </div>
         ) : (
           <>
+            <TabsContent value="schedule" className="mt-0 h-full">
+              <DataWeeklySchedule data={tasks ?? []} />
+            </TabsContent>
             <TabsContent value="table" className="mt-0">
               <DataTable columns={columns} data={tasks ?? []} />
             </TabsContent>
