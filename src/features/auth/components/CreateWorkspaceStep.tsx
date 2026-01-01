@@ -8,6 +8,8 @@ interface CreateWorkspaceStepProps {
 }
 
 export const CreateWorkspaceStep = ({ onComplete }: CreateWorkspaceStepProps) => {
+    // onComplete is not used here because CreateWorkspaceForm handles redirect internally
+    void onComplete;
 
     return (
         <Card className="w-full bg-white rounded-lg shadow-lg border-none">
@@ -19,8 +21,8 @@ export const CreateWorkspaceStep = ({ onComplete }: CreateWorkspaceStepProps) =>
                     Get started by creating a workspace for your projects and tasks
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <CreateWorkspaceForm onCancel={undefined} />
+            <CardContent className="p-6 md:p-7 pt-4">
+                <CreateWorkspaceForm onCancel={undefined} skipCardWrapper={true} />
             </CardContent>
         </Card>
     );
