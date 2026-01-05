@@ -63,7 +63,7 @@ export const Sidebar = () => {
         <Projects />
       </div>
 
-      <div className="mt-auto pt-4">
+      <div className="hidden mt-auto pt-4">
         <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
           Invite people
         </Button>
