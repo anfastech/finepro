@@ -21,9 +21,10 @@ export const Sidebar = () => {
     <aside className="h-full bg-[#1e3a5f] p-4 w-full flex flex-col text-white">
       <div className="flex items-center justify-between mb-4">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="logo" width={164} height={48} className="brightness-0 invert" />
+          <Image src="/logo.svg" alt="logo" width={164} height={48} className="hidden brightness-0 invert" />
+          <span className="text-white text-xl  brightness-0 invert">Productify AI</span> 
         </Link>
-        <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+        <Button variant="ghost" size="sm" className="hidden text-white hover:bg-white/10">
           Tools
         </Button>
       </div>
