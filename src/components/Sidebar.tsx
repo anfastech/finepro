@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { Search } from "lucide-react";
 import { DottedSeparator } from "./dotted-separator";
 import { Navigation } from "./Navigation";
@@ -10,23 +8,17 @@ import { Projects } from "@/components/projects";
 import { Teams } from "./Teams";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { useCurrent } from "@/features/auth/api/use-current";
+import { Separator } from "./ui/separator";
 
 export const Sidebar = () => {
-  const { data: user } = useCurrent();
-  const displayName = user?.name || user?.email || "User";
-  const avatarInitial = displayName.charAt(0).toUpperCase();
 
   return (
     <aside className="h-full bg-[#1e3a5f] p-4 w-full flex flex-col text-white">
-      <div className="flex items-center justify-between mb-4">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="logo" width={164} height={48} className="hidden brightness-0 invert" />
-          <span className="text-white text-xl  brightness-0 invert">Productify AI</span> 
-        </Link>
-        <Button variant="ghost" size="sm" className="hidden text-white hover:bg-white/10">
-          Tools
-        </Button>
+      <div className="mb-4 w-full">
+        <WorkspaceSwitcher />
+      </div>
+      <div className="mb-4 w-full">
+        <Separator className="my-4 bg-white/20" />
       </div>
       
       <div className="mb-4">
