@@ -11,6 +11,7 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID } from "@/config";
 
 import { Task, TaskStatus } from "../types";
+import { updateTaskSchema } from "../schemas";
 import { createTaskSchema } from "../schemas";
 
 const app = new Hono()
@@ -54,6 +55,7 @@ const app = new Hono()
         status: z.nativeEnum(TaskStatus).nullish(),
         search: z.string().nullish(),
         dueDate: z.string().nullish(),
+        teamId: z.string().nullish(),
       })
     ),
     async (c) => {
@@ -61,7 +63,7 @@ const app = new Hono()
       const databases = c.get("database");
       const user = c.get("user");
 
-      const { workspaceId, projectId, status, search, assigneeId, dueDate } =
+      const { workspaceId, projectId, status, search, assigneeId, dueDate, teamId } =
         c.req.valid("query");
 
       if (!workspaceId) {
@@ -218,8 +220,23 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("database");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId } =
-        c.req.valid("json");
+      const { 
+        name, 
+        status, 
+        workspaceId, 
+        projectId, 
+        dueDate, 
+        assigneeId,
+        description,
+        startTime,
+        endTime,
+        duration,
+        totalSubtasks,
+        completedSubtasks,
+        priority,
+        isUrgent,
+        teamId,
+      } = c.req.valid("json");
 
       const member = await getMember({
         databases,
@@ -259,6 +276,15 @@ const app = new Hono()
           dueDate: dueDate.toISOString(),
           assigneeId,
           position: newPosition,
+          description,
+          startTime,
+          endTime,
+          duration,
+          totalSubtasks,
+          completedSubtasks,
+          priority,
+          isUrgent,
+          teamId,
         }
       );
 
@@ -268,12 +294,26 @@ const app = new Hono()
   .patch(
     "/:taskId",
     sessionMiddleware,
-    zValidator("json", createTaskSchema.partial()),
+    zValidator("json", updateTaskSchema),
     async (c) => {
       const user = c.get("user");
       const databases = c.get("database");
-      const { name, status, description, projectId, dueDate, assigneeId } =
-        c.req.valid("json");
+      const { 
+        name, 
+        status, 
+        description, 
+        projectId, 
+        dueDate, 
+        assigneeId,
+        startTime,
+        endTime,
+        duration,
+        totalSubtasks,
+        completedSubtasks,
+        priority,
+        isUrgent,
+        teamId,
+      } = c.req.valid("json");
 
       const { taskId } = c.req.param();
 
@@ -293,18 +333,28 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      const updateData: Record<string, unknown> = {};
+      
+      if (name !== undefined) updateData.name = name;
+      if (status !== undefined) updateData.status = status;
+      if (projectId !== undefined) updateData.projectId = projectId;
+      if (dueDate !== undefined) updateData.dueDate = dueDate.toISOString();
+      if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+      if (description !== undefined) updateData.description = description;
+      if (startTime !== undefined) updateData.startTime = startTime;
+      if (endTime !== undefined) updateData.endTime = endTime;
+      if (duration !== undefined) updateData.duration = duration;
+      if (totalSubtasks !== undefined) updateData.totalSubtasks = totalSubtasks;
+      if (completedSubtasks !== undefined) updateData.completedSubtasks = completedSubtasks;
+      if (priority !== undefined) updateData.priority = priority;
+      if (isUrgent !== undefined) updateData.isUrgent = isUrgent;
+      if (teamId !== undefined) updateData.teamId = teamId;
+
       const task = await databases.updateDocument<Task>(
         DATABASE_ID,
         TASKS_ID,
         taskId,
-        {
-          name,
-          status,
-          projectId,
-          dueDate: dueDate ? dueDate.toISOString() : undefined,
-          assigneeId,
-          description,
-        }
+        updateData
       );
 
       return c.json({ data: task });

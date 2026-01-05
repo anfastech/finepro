@@ -32,13 +32,13 @@ export const Sidebar = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-neutral-400" />
           <Input
-            placeholder="Q Search..."
+            placeholder="Search..."
             className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-neutral-400 focus-visible:border-white/40"
           />
         </div>
       </div>
 
-      <div className="mb-4">
+      {/* <div className="mb-4">
         <div className="flex items-center gap-2 p-2.5 rounded-md">
           <div className="size-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
             {avatarInitial}
@@ -47,7 +47,7 @@ export const Sidebar = () => {
             <span className="text-sm font-medium text-white">My work</span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <DottedSeparator className="my-4" color="rgba(255,255,255,0.2)" />
       

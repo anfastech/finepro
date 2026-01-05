@@ -17,6 +17,14 @@ export type Task = Models.Document & {
     position: number;
     dueDate: string;
     description?: string;
+    startTime?: string;
+    endTime?: string;
+    duration?: number;
+    totalSubtasks?: number;
+    completedSubtasks?: number;
+    priority?: "ASAP" | "HIGH" | "MEDIUM" | "LOW";
+    isUrgent?: boolean;
+    teamId?: string;
     project?: {
         name: string;
         imageUrl?: string;

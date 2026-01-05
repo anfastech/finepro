@@ -72,7 +72,7 @@ export const Navbar = () => {
 
                 <div className="hidden lg:flex items-center gap-2 -space-x-2">
                     {displayMembers.map((member) => (
-                        <div key={member.$id} className="size-8 rounded-full border-2 border-white overflow-hidden">
+                        <div key={member.$id} className="size-8 -ml-3 rounded-full border-2 border-white overflow">
                             <MemberAvatar
                                 className="size-8"
                                 name={member.name || member.email || ""}
@@ -91,7 +91,7 @@ export const Navbar = () => {
                     <Button variant="ghost" size="icon" className="relative h-9 w-9">
                         <Bell className="size-5" />
                         {members && members.total > 0 && (
-                            <span className="absolute top-0 right-0 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            <span className="absolute hidden top-0 right-0 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                                 12
                             </span>
                         )}
@@ -101,7 +101,7 @@ export const Navbar = () => {
                 <div className="relative">
                     <UserBtn />
                     {members && members.total > 0 && (
-                        <span className="absolute -top-1 -right-1 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        <span className="absolute hidden -top-1 -right-1 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                             2
                         </span>
                     )}

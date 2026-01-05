@@ -3,7 +3,7 @@
 import { Task } from "../types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { TaskStatus } from "../types";
 
@@ -53,62 +53,127 @@ const getTaskColor = (task: Task): string => {
   }
 };
 
+// Format duration to "Xh Ym" or "Xh" format
+const formatDuration = (hours?: number): string => {
+  if (!hours) return "";
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  
+  if (minutes === 0) {
+    return `${wholeHours}h`;
+  }
+  return `${wholeHours}h ${minutes}m`;
+};
+
+// Calculate days until due date
+const getDaysLeft = (dueDate: string): number | null => {
+  try {
+    const due = parseISO(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    return differenceInDays(due, today);
+  } catch {
+    return null;
+  }
+};
+
 export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCardProps) => {
   const colorClass = getTaskColor(task);
   
-  // Check if task has a time (would come from task.startTime/endTime if available)
-  const hasTime = showTime && task.dueDate;
+  // Time range display
   let timeDisplay = "";
-
-  if (hasTime) {
-    try {
-      const taskDate = parseISO(task.dueDate);
-      // Placeholder: would use actual startTime/endTime from task
-      timeDisplay = format(taskDate, "HH:mm");
-    } catch {
-      // Invalid date
-    }
+  if (task.startTime && task.endTime) {
+    timeDisplay = `${task.startTime}-${task.endTime}`;
+  } else if (task.startTime) {
+    timeDisplay = task.startTime;
   }
+  
+  // Duration display
+  const durationDisplay = task.duration ? formatDuration(task.duration) : "";
+  
+  // Progress indicator
+  const showProgress = task.totalSubtasks !== undefined && task.totalSubtasks > 0;
+  const progressDisplay = showProgress 
+    ? `${task.completedSubtasks || 0}/${task.totalSubtasks}` 
+    : "";
+  
+  // Priority/ASAP badge
+  const showASAP = task.priority === "ASAP" || task.isUrgent;
+  
+  // Days left indicator
+  const daysLeft = task.dueDate ? getDaysLeft(task.dueDate) : null;
+  const showDaysLeft = daysLeft !== null && daysLeft >= 0;
+  
+  // Determine days left badge color
+  const getDaysLeftColor = (days: number) => {
+    if (days <= 1) return "bg-red-100 text-red-700";
+    if (days <= 3) return "bg-orange-100 text-orange-700";
+    if (days <= 7) return "bg-yellow-100 text-yellow-700";
+    return "bg-gray-100 text-gray-700";
+  };
 
   return (
     <div
       className={cn(
-        "p-2 rounded-md text-xs border cursor-pointer hover:shadow-md transition-all",
+        "p-2 rounded-md text-xs border cursor-pointer hover:shadow-sm transition-all",
         colorClass
       )}
     >
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex-1 min-w-0">
-          {hasTime && timeDisplay && (
-            <div className="text-[10px] text-muted-foreground mb-1 font-medium">
-              {timeDisplay}
-            </div>
+      <div className="flex flex-col gap-1">
+        {/* Time range */}
+        {timeDisplay && (
+          <div className="text-[10px] text-gray-600 font-medium">
+            {timeDisplay}
+          </div>
+        )}
+        
+        {/* Task name */}
+        <div className="font-medium line-clamp-2 text-gray-900 text-xs leading-tight">{task.name}</div>
+        
+        {/* Project information - moved up before badges */}
+        {task.project && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <ProjectAvatar
+              className="size-3"
+              fallbackClassName="text-[8px]"
+              name={task.project.name}
+              image={task.project.imageUrl}
+            />
+            <span className="text-[10px] text-gray-600 truncate">
+              {task.project.name}
+            </span>
+          </div>
+        )}
+        
+        {/* Badges row: ASAP, Progress, Days left */}
+        <div className="flex items-center gap-1 flex-wrap mt-0.5">
+          {showASAP && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">
+              ASAP
+            </span>
           )}
-          <div className="font-medium line-clamp-2 mb-1 text-gray-900">{task.name}</div>
-          {task.project && (
-            <div className="flex items-center gap-1 mt-1">
-              <ProjectAvatar
-                className="size-3"
-                fallbackClassName="text-[8px]"
-                name={task.project.name}
-                image={task.project.imageUrl}
-              />
-              <span className="text-[10px] text-muted-foreground truncate">
-                {task.project.name}
-              </span>
-            </div>
+          {showProgress && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
+              {progressDisplay}
+            </span>
           )}
-          {task.assignee && (
-            <div className="flex items-center gap-1 mt-1">
-              <MemberAvatar
-                className="size-3"
-                fallbackClassName="text-[8px]"
-                name={task.assignee.name || task.assignee.email || ""}
-                avatarColor={task.assignee.avatarColor}
-              />
-            </div>
+          {showDaysLeft && (
+            <span className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-medium",
+              getDaysLeftColor(daysLeft)
+            )}>
+              {daysLeft === 0 ? "Today" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+            </span>
           )}
         </div>
+        
+        {/* Duration */}
+        {durationDisplay && (
+          <div className="text-[10px] text-gray-600 font-medium mt-0.5">
+            {durationDisplay}
+          </div>
+        )}
       </div>
     </div>
   );

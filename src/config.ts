@@ -6,6 +6,7 @@ export const MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_MEMBERS_ID!
 export const PROJECTS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECTS_ID!
 export const TASKS_ID = process.env.NEXT_PUBLIC_APPWRITE_TASKS_ID!
 export const NOTES_ID = process.env.NEXT_PUBLIC_APPWRITE_NOTES_ID!
+export const TEAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAMS_ID!
 
 export const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!
 export const APPWRITE_PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!

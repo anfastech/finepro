@@ -23,7 +23,7 @@ const app = new Hono()
             const user = c.get("user");
       
             // Extract validated form data
-            const { name, image, workspaceId } = c.req.valid("form");
+            const { name, image, workspaceId, teamId } = c.req.valid("form");
 
             const member = await getMember({
                 databases,
@@ -59,7 +59,8 @@ const app = new Hono()
               {
                 name,
                 imageUrl: uploadedImageUrl, // Store the file URL or undefined if no image
-                workspaceId
+                workspaceId,
+                teamId: teamId || undefined,
               }
             );
       
@@ -72,12 +73,12 @@ const app = new Hono()
     .get(
         "/",
         sessionMiddleware,
-        zValidator("query", z.object({ workspaceId: z.string() })),
+        zValidator("query", z.object({ workspaceId: z.string(), teamId: z.string().nullish() })),
         async (c) => {
             const user = c.get("user");
             const databases = c.get("database");
 
-            const { workspaceId } = c.req.valid("query");
+            const { workspaceId, teamId } = c.req.valid("query");
 
             if (!workspaceId) {
                 return c.json({
@@ -97,13 +98,19 @@ const app = new Hono()
                 }, 401);
             }
 
+            const query = [
+                Query.equal("workspaceId", workspaceId),
+                Query.orderDesc("$createdAt"),
+            ];
+
+            if (teamId) {
+                query.push(Query.equal("teamId", teamId));
+            }
+
             const projects = await databases.listDocuments<Project>(
                 DATABASE_ID,
                 PROJECTS_ID,
-                [
-                    Query.equal("workspaceId", workspaceId),
-                    Query.orderDesc("$createdAt"),
-                ]
+                query
             );
 
 
@@ -147,7 +154,7 @@ const app = new Hono()
       const user = c.get("user");
 
       const { projectId } = c.req.param();
-      const { name, image } = c.req.valid("form");
+      const { name, image, teamId } = c.req.valid("form");
 
       const existingProject = await databases.getDocument<Project>(
         DATABASE_ID,
@@ -183,14 +190,20 @@ const app = new Hono()
         uploadedImageUrl = image;
       }
 
+      const updateData: Record<string, unknown> = {
+        name,
+        imageUrl: uploadedImageUrl,
+      };
+      
+      if (teamId !== undefined) {
+        updateData.teamId = teamId || undefined;
+      }
+
       const project = await databases.updateDocument(
         DATABASE_ID,
         PROJECTS_ID,
         projectId,
-        {
-          name,
-          imageUrl: uploadedImageUrl,
-        }
+        updateData
       )
 
       return c.json({

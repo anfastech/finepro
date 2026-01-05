@@ -1,51 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { RiAddCircleFill } from "react-icons/ri";
-import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-
-const teams = [
-  { id: "1", name: "Marketing" },
-  { id: "2", name: "Design" },
-  { id: "3", name: "Development" },
-];
+import { useGetTeams } from "@/features/teams/api/use-get-teams";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { TeamAvatar } from "@/features/teams/components/team-avatar";
+import { useCreateTeamModal } from "@/features/teams/hooks/use-create-team-modal";
 
 export const Teams = () => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const pathname = usePathname();
+  const { open } = useCreateTeamModal();
+  const workspaceId = useWorkspaceId();
+  const { data } = useGetTeams({ workspaceId });
+
+  const teams = data?.documents || [];
 
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs uppercase text-neutral-400">Teams</p>
-        <RiAddCircleFill className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition" />
+        <p className="text-xs uppercase text-neutral-400">TEAMS</p>
+        <RiAddCircleFill
+          onClick={open}
+          className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition"
+        />
       </div>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-neutral-300 hover:text-white transition"
-      >
-        {isExpanded ? (
-          <ChevronDown className="size-4" />
+      <div className="flex flex-col gap-y-1">
+        {teams.length === 0 ? (
+          <p className="text-xs text-neutral-400 px-2 py-1">No teams yet</p>
         ) : (
-          <ChevronRight className="size-4" />
+          teams.map((team) => {
+            const isActive = pathname?.includes(`/teams/${team.$id}`) || pathname?.includes("/teams-list");
+            return (
+              <Link
+                key={team.$id}
+                href={`/workspaces/${workspaceId}/teams-list`}
+                className={cn(
+                  "flex items-center gap-2.5 p-2 rounded-md text-sm text-neutral-300 hover:bg-sidebar-accent hover:text-white transition text-left",
+                  isActive && "bg-sidebar-accent text-white"
+                )}
+              >
+                <TeamAvatar team={team} className="size-4" />
+                <span className="truncate">{team.name}</span>
+              </Link>
+            );
+          })
         )}
-        <span className="text-sm">Teams</span>
-      </button>
-      {isExpanded && (
-        <div className="flex flex-col gap-y-1 pl-6">
-          {teams.map((team) => (
-            <button
-              key={team.id}
-              className={cn(
-                "flex items-center gap-2.5 p-2 rounded-md text-sm text-neutral-300 hover:bg-sidebar-accent hover:text-white transition text-left"
-              )}
-            >
-              <span>{team.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 };
