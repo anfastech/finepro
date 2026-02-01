@@ -18,15 +18,9 @@ const OnboardingPage = async () => {
     const hasWorkspace = workspaces.documents.length > 0;
 
     if (hasPassword && hasName && hasWorkspace) {
-        console.log("User has completed onboarding, redirecting to first workspace");
         // User has completed onboarding, redirect to first workspace
         redirect(`/workspaces/${workspaces.documents[0].$id}`);
     }
-
-    console.log("hasPassword", hasPassword);
-    console.log("hasName", hasName);
-    console.log("hasWorkspace", hasWorkspace);
-    console.log("User has not completed onboarding, redirecting to onboarding");
 
     return (
         <div className="w-full">
