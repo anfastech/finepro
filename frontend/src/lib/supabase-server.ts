@@ -22,7 +22,10 @@ export async function createSupabaseClient() {
           }
           cookieStore.set({ name, value, ...options })
         } catch (error) {
-          console.error(`[Supabase SSR] Error setting cookie ${name}:`, error)
+          // The `set` method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing
+          // user sessions.
+          // console.error(`[Supabase SSR] Error setting cookie ${name}:`, error)
         }
       },
       remove(name: string, options: CookieOptions) {
@@ -32,7 +35,10 @@ export async function createSupabaseClient() {
           }
           cookieStore.set({ name, value: '', ...options })
         } catch (error) {
-          console.error(`[Supabase SSR] Error removing cookie ${name}:`, error)
+          // The `remove` method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing
+          // user sessions.
+          // console.error(`[Supabase SSR] Error removing cookie ${name}:`, error)
         }
       }
     }
