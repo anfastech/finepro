@@ -29,23 +29,53 @@ async def get_current_user(
     
     try:
         token = credentials.credentials
+        logger.info(f"get_current_user: Received token starting with {token[:10]}...")
+        
+        # 1. Try to verify as our own token
         token_data: Optional[TokenData] = verify_token(token)
-        if token_data is None:
-            logger.warning("Token verification failed in get_current_user")
-            raise credentials_exception
+        
+        if token_data:
+            logger.info(f"get_current_user: Verified as internal token for user_id: {token_data.user_id}")
+             # Get user from database using our internal auth_id (which matches supabase_id)
+            from sqlalchemy import select
+            result = await db.execute(select(User).where(User.supabase_id == token_data.user_id))
+            user = result.scalar_one_or_none()
+            
+            if user:
+                logger.info(f"get_current_user: Found user {user.email} in DB via internal token")
+                return user
+            else:
+                logger.warning(f"get_current_user: Internal token valid but user {token_data.user_id} not found in DB")
+
+        # 2. If not our token, try to verify as Supabase token
+        # This supports calls from frontend using Supabase session token directly
+        logger.info("get_current_user: Internal token verification failed or user not found, trying Supabase token...")
+        user_data = await verify_supabase_token(token)
+        
+        if user_data:
+            logger.info(f"get_current_user: Verified as Supabase token for user_id: {user_data.get('user_id')}")
+             # Get user from database
+            from sqlalchemy import select
+            result = await db.execute(select(User).where(User.supabase_id == user_data["user_id"]))
+            user = result.scalar_one_or_none()
+            
+            if user:
+                logger.info(f"get_current_user: Found user {user.email} in DB via Supabase token")
+                return user
+            else:
+                 logger.warning(f"get_current_user: Supabase token valid but user {user_data.get('user_id')} not found in DB")
+            
+            # Optional: Auto-create user if valid Supabase token but no user in DB?
+            # For now, let's strictly require /auth/exchange to have run first to create the user.
+        else:
+            logger.warning("get_current_user: Supabase token verification failed")
+            
     except Exception as e:
-        logger.exception(f"Unexpected error in get_current_user: {e}")
-        raise credentials_exception
-    
-    # Get user from database
-    from sqlalchemy import select
-    result = await db.execute(select(User).where(User.auth_id == token_data.user_id))
-    user = result.scalar_one_or_none()
-    
-    if user is None:
-        raise credentials_exception
-    
-    return user
+        logger.error(f"Error in get_current_user: {e}")
+        # Don't raise here, let the final check raise
+        
+    logger.warning("Token verification failed in get_current_user")
+    raise credentials_exception
 
 
 async def get_current_active_user(

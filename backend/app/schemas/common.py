@@ -46,3 +46,9 @@ class HealthCheck(BaseModel):
     database: str
     version: str = "1.0.0"
     timestamp: datetime
+
+
+class AuthExchangeResponse(Token):
+    """Response for auth exchange with onboarding info"""
+    onboarding_required: bool
+    redirect_url: str

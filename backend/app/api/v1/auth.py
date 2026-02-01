@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from datetime import timedelta
+from datetime import datetime, timedelta
 import httpx
 import logging
 
@@ -9,9 +9,11 @@ from app.schemas.auth import (
     SupabaseTokenRequest, 
     SupabaseTokenResponse, 
     RefreshTokenRequest, 
-    CommonResponse
+    CommonResponse,
 )
+from app.schemas.common import AuthExchangeResponse
 from app.config import settings
+from app.schemas.user import UserResponse, UserUpdate
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user import User
@@ -45,7 +47,7 @@ async def verify_supabase_jwt(token: str) -> dict:
         }
 
 
-@router.post("/exchange", response_model=Token, status_code=200)
+@router.post("/exchange", response_model=AuthExchangeResponse, status_code=200)
 async def exchange_supabase_token(
     request: SupabaseTokenRequest,
     db: AsyncSession = Depends(get_db)
@@ -104,12 +106,57 @@ async def exchange_supabase_token(
     refresh_token = create_refresh_token(
         data={"sub": user_data["user_id"], "email": user.email}
     )
+
+    # Check if onboarding is required
+    # 1. Check for password (from new column)
+    has_password = user.has_password
     
-    return Token(
+    # 2. Check for name
+    # OAuth users have name, but we might want them to confirm it.
+    # Logic: if name implies incomplete profile or user explicitly needs to set it?
+    # For now, just check if it's not empty.
+    has_name = bool(user.name and user.name.strip())
+    
+    # 3. Check for workspace (fetch latest one)
+    # We need to query Member table to see if user is part of any workspace
+    from app.models.member import Member
+    from app.models.workspace import Workspace
+    
+    latest_workspace_query = (
+        select(Workspace)
+        .join(Member, Member.workspace_id == Workspace.id)
+        .where(Member.user_id == user.id)
+        .order_by(Workspace.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(latest_workspace_query)
+    latest_workspace = result.scalar_one_or_none()
+    
+    onboarding_required = False
+    redirect_url = f"/workspaces/{latest_workspace.id}" if latest_workspace else "/onboarding"
+    
+    logger.info(f"Auth Exchange: has_password={has_password}, has_name={has_name}, workspace={latest_workspace.id if latest_workspace else 'None'}")
+    
+    if not has_password or not has_name or not latest_workspace:
+        if not has_password:
+            logger.info("Auth Exchange: Redirecting to onboarding (Missing Password)")
+        elif not has_name:
+            logger.info("Auth Exchange: Redirecting to onboarding (Missing Name)")
+        elif not latest_workspace:
+            logger.info("Auth Exchange: Redirecting to onboarding (No Workspace)")
+            
+        onboarding_required = True
+        redirect_url = "/onboarding"
+    else:
+        logger.info(f"Auth Exchange: Redirecting to workspace {latest_workspace.id}")
+    
+    return AuthExchangeResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        onboarding_required=onboarding_required,
+        redirect_url=redirect_url
     )
 
 
@@ -176,11 +223,51 @@ async def get_current_user_info(
     """Get current authenticated user"""
     return {
         "id": current_user.supabase_id,
-        "uuid": str(current_user.id),
+        "uuid": current_user.id,
         "email": current_user.email,
         "name": current_user.name,
         "avatar_url": current_user.avatar_url,
     }
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user_info(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update current user profile"""
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    current_user.updated_at = datetime.now()
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user_info(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update current user profile"""
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    current_user.updated_at = datetime.now()
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return current_user
 
 
 @router.post("/logout", response_model=CommonResponse)

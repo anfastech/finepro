@@ -11,15 +11,22 @@ const OnboardingPage = async () => {
     }
 
     // Check if user has already completed onboarding
-    // If they have a name and workspace, redirect to dashboard
-    const hasName = user?.name && user.name.trim() !== "";
+    // If they have password, name, and workspace, redirect to dashboard
+    const hasPassword = user?.has_password;
+    const hasName = Boolean(user?.name?.trim());
     const workspaces = await getWorkspaces();
     const hasWorkspace = workspaces.documents.length > 0;
 
-    if (hasName && hasWorkspace) {
-        // User has completed onboarding, redirect to dashboard
-        redirect("/");
+    if (hasPassword && hasName && hasWorkspace) {
+        console.log("User has completed onboarding, redirecting to first workspace");
+        // User has completed onboarding, redirect to first workspace
+        redirect(`/workspaces/${workspaces.documents[0].$id}`);
     }
+
+    console.log("hasPassword", hasPassword);
+    console.log("hasName", hasName);
+    console.log("hasWorkspace", hasWorkspace);
+    console.log("User has not completed onboarding, redirecting to onboarding");
 
     return (
         <div className="w-full">

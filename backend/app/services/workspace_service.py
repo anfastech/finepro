@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from uuid import UUID
 
 from app.models.workspace import Workspace
 from app.models.member import Member
@@ -21,21 +20,22 @@ class WorkspaceService:
     def __init__(self, db: AsyncSession):
         self.db = db
     
-    async def get_by_id(self, workspace_id: UUID) -> Optional[Workspace]:
+    async def get_by_id(self, workspace_id: str) -> Optional[Workspace]:
         """Get workspace by ID with members"""
+        # Ensure we are querying with string ID
         result = await self.db.execute(
             select(Workspace)
             .options(selectinload(Workspace.members))
-            .where(Workspace.id == workspace_id)
+            .where(Workspace.id == str(workspace_id))
         )
         return result.scalar_one_or_none()
     
-    async def list_user_workspaces(self, user_id: UUID) -> List[Workspace]:
+    async def list_user_workspaces(self, user_id: str) -> List[Workspace]:
         """List all workspaces where user is a member"""
         result = await self.db.execute(
             select(Workspace)
             .join(Member)
-            .where(Member.user_id == user_id)
+            .where(Member.user_id == str(user_id))
             .order_by(Workspace.created_at.desc())
         )
         return list(result.scalars().all())
@@ -43,7 +43,7 @@ class WorkspaceService:
     async def create(
         self,
         data: WorkspaceCreate,
-        owner_id: UUID
+        owner_id: str
     ) -> Workspace:
         """Create a new workspace and add owner as admin"""
         invite_code = self._generate_invite_code()
@@ -69,7 +69,7 @@ class WorkspaceService:
         await self.db.refresh(workspace)
         return workspace
     
-    async def update(self, workspace_id: UUID, data: WorkspaceUpdate) -> Optional[Workspace]:
+    async def update(self, workspace_id: str, data: WorkspaceUpdate) -> Optional[Workspace]:
         """Update workspace details"""
         workspace = await self.get_by_id(workspace_id)
         if not workspace:
@@ -83,7 +83,7 @@ class WorkspaceService:
         await self.db.refresh(workspace)
         return workspace
     
-    async def delete(self, workspace_id: UUID) -> bool:
+    async def delete(self, workspace_id: str) -> bool:
         """Delete a workspace"""
         # Note: cascading deletes should handle members, projects, etc.
         result = await self.db.execute(
@@ -92,7 +92,7 @@ class WorkspaceService:
         await self.db.commit()
         return result.rowcount > 0
     
-    async def reset_invite_code(self, workspace_id: UUID) -> Optional[Workspace]:
+    async def reset_invite_code(self, workspace_id: str) -> Optional[Workspace]:
         """Generate a new invite code for the workspace"""
         workspace = await self.get_by_id(workspace_id)
         if not workspace:
@@ -103,7 +103,7 @@ class WorkspaceService:
         await self.db.refresh(workspace)
         return workspace
     
-    async def get_analytics(self, workspace_id: UUID, user_id: UUID) -> dict:
+    async def get_analytics(self, workspace_id: str, user_id: str) -> dict:
         """Get task analytics for a workspace"""
         from sqlalchemy import func
         from app.models.task import Task
@@ -152,7 +152,7 @@ class WorkspaceService:
             "incompleteTaskDifference": 0,
         }
 
-    async def join_by_invite_code(self, workspace_id: UUID, invite_code: str, user_id: UUID) -> Optional[Workspace]:
+    async def join_by_invite_code(self, workspace_id: str, invite_code: str, user_id: str) -> Optional[Workspace]:
         """Join a workspace using an invite code"""
         workspace = await self.get_by_id(workspace_id)
         if not workspace or workspace.invite_code != invite_code:

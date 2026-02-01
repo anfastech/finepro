@@ -4,9 +4,9 @@ Member API Endpoints - Management for workspace members and roles
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from uuid import UUID
 
 from app.database import get_db
+# ... imports ...
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.enums import MemberRole, ActionType, EntityType
@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/workspaces/{workspace_id}/members", response_model=List[MemberResponse])
 async def list_workspace_members(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -40,8 +40,8 @@ async def list_workspace_members(
 
 @router.post("/workspaces/{workspace_id}/members/invite", response_model=MemberResponse)
 async def invite_member(
-    workspace_id: UUID,
-    user_id: UUID = Query(..., description="User ID to invite"),
+    workspace_id: str,
+    user_id: str = Query(..., description="User ID to invite"),
     role: MemberRole = Query(MemberRole.MEMBER),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -65,7 +65,7 @@ async def invite_member(
 
 @router.patch("/{member_id}", response_model=MemberResponse)
 async def update_member_role(
-    member_id: UUID,
+    member_id: str,
     member_data: MemberUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -96,7 +96,7 @@ async def update_member_role(
 
 @router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
-    member_id: UUID,
+    member_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

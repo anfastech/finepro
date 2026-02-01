@@ -1,36 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { Workspace } from "../types";
+import { api as client } from "@/lib/api";
 
 export const useGetWorkspaces = () => {
   const query = useQuery({
     queryKey: ["workspaces"],
     queryFn: async () => {
-      // Fetch current user first
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error("User not authenticated");
-      }
+      const response = await client.get<any[]>("/workspaces/");
 
-      // Query workspaces where user is owner or member
-      const { data: workspaces, error } = await supabase
-        .from('workspaces')
-        .select(`
-          *,
-          members!inner(
-            user_id,
-            role
-          )
-        `)
-        .or(`owner_id.eq.${user.id},members.user_id.eq.${user.id}`);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // Transform to match frontend interface
-      const documents = workspaces.map((ws: any) => ({
+      // Transform backend response to match frontend interface
+      const documents = response.map((ws) => ({
         $id: ws.id,
         $createdAt: ws.created_at,
         $updatedAt: ws.updated_at,

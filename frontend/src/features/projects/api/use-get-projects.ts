@@ -25,7 +25,7 @@ interface useGetProjectsProps {
 }
 
 interface UseGetProjectsResult {
-  data: Project[];
+  documents: Project[];
   total: number;
 }
 
@@ -49,7 +49,7 @@ export const useGetProjects = ({
         throw new Error(error.message || "Failed to fetch projects");
       }
       return {
-        data: data ?? [],
+        documents: data ?? [],
         total: data?.length ?? 0,
       };
     },

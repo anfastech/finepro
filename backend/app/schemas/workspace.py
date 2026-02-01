@@ -15,8 +15,8 @@ class MemberBase(BaseModel):
 
 
 class MemberCreate(MemberBase):
-    user_id: UUID
-    workspace_id: UUID
+    user_id: str
+    workspace_id: str
 
 
 class MemberUpdate(BaseModel):
@@ -26,9 +26,9 @@ class MemberUpdate(BaseModel):
 class MemberResponse(MemberBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    user_id: UUID
-    workspace_id: UUID
+    id: str
+    user_id: str
+    workspace_id: str
     joined_at: datetime
     user: Optional["UserResponse"] = None
 
@@ -43,7 +43,7 @@ class WorkspaceCreateRequest(WorkspaceBase):
 
 
 class WorkspaceCreate(WorkspaceBase):
-    owner_id: UUID
+    owner_id: str
     supabase_id: Optional[str] = None
 
 
@@ -55,8 +55,8 @@ class WorkspaceUpdate(BaseModel):
 class WorkspaceResponse(WorkspaceBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    owner_id: UUID
+    id: str
+    owner_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -4,7 +4,6 @@ Activity Service - Handles audit logging of all system actions
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from typing import List, Optional, Any, Dict
-from uuid import UUID
 
 from app.models.activity_log import ActivityLog
 from app.models.enums import ActionType, EntityType
@@ -18,10 +17,10 @@ class ActivityService:
     
     async def log(
         self,
-        user_id: UUID,
+        user_id: str,
         action: ActionType,
         entity_type: EntityType,
-        entity_id: UUID,
+        entity_id: str,
         changes: Optional[Dict[str, Any]] = None
     ) -> ActivityLog:
         """Create a new activity log entry"""
@@ -40,7 +39,7 @@ class ActivityService:
     async def get_by_entity(
         self,
         entity_type: EntityType,
-        entity_id: UUID,
+        entity_id: str,
         limit: int = 50
     ) -> List[ActivityLog]:
         """Get activity logs for a specific entity"""
@@ -57,7 +56,7 @@ class ActivityService:
     
     async def get_by_user(
         self,
-        user_id: UUID,
+        user_id: str,
         limit: int = 50
     ) -> List[ActivityLog]:
         """Get activity logs for a specific user"""
@@ -71,7 +70,7 @@ class ActivityService:
     
     async def get_workspace_activities(
         self,
-        workspace_id: UUID,
+        workspace_id: str,
         limit: int = 100
     ) -> List[ActivityLog]:
         """

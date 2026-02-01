@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const allCookies = cookieStore.getAll()
     console.log(`[Auth Callback] Total cookies: ${allCookies.length}`);
-    console.log(`[Auth Callback] Cookie names: ${allCookies.map(c => c.name).join(', ')}`);
+    console.log(`[Auth Callback] Cookie names: ${allCookies.map((c: any) => c.name).join(', ')}`);
 
     console.log('[Auth Callback] Exchanging code for session...');
     const supabase = await createSupabaseClient()
@@ -55,13 +55,38 @@ export async function GET(request: NextRequest) {
         const tokens = await backendResponse.json()
         accessToken = tokens.access_token
         refreshToken = tokens.refresh_token
+
+        // Handle backend-driven redirection
+        if (tokens.redirect_url) {
+          console.log(`[Auth Callback] Backend requested redirect to: ${tokens.redirect_url}`);
+          // Use the backend provided URL
+          const response = NextResponse.redirect(`${origin}${tokens.redirect_url}`)
+          // Set FastAPI tokens as HTTP-only cookies for backend API (if we got them)
+          if (accessToken && refreshToken) {
+            console.log('[Auth Callback] Setting FastAPI token cookies');
+            response.cookies.set('access_token', accessToken, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 // 1 day
+            })
+            response.cookies.set('refresh_token', refreshToken, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 7 // 7 days
+            })
+          }
+          return response;
+        }
+
         console.log('[Auth Callback] ✅ Backend notified, FastAPI tokens received');
       } else {
         const errorText = await backendResponse.text();
         console.error(`[Auth Callback] ❌ Backend auth/exchange failed (${backendResponse.status}):`, errorText);
       }
 
-      // Create response with redirect
+      // Default fallback if no specific redirect instruction or error
       console.log('[Auth Callback] Redirecting to home...');
       const response = NextResponse.redirect(`${origin}/?auth=success`)
 

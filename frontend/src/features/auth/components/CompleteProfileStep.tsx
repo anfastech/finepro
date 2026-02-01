@@ -17,26 +17,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useChangePassword } from "../api/use-change-password";
 import { useUpdateName } from "../api/use-update-name";
-import { changePasswordSchema, updateNameSchema } from "../schemas";
+import { updateNameSchema } from "../schemas";
+import { useCurrent } from "../api/use-current";
 
 interface CompleteProfileStepProps {
     onComplete: () => void;
 }
 
 export const CompleteProfileStep = ({ onComplete }: CompleteProfileStepProps) => {
-    const { mutate: changePassword, isPending } = useChangePassword();
-    const { mutate: updateName, isPending: isUpdateName } = useUpdateName();
+    const { data: user } = useCurrent();
+    const { mutate: updateName, isPending } = useUpdateName();
 
     const form = useForm<z.infer<typeof updateNameSchema>>({
         resolver: zodResolver(updateNameSchema),
         defaultValues: {
-            name: "",
+            name: user?.user_metadata?.full_name || "",
         },
     });
 
     const onSubmit = (data: z.infer<typeof updateNameSchema>) => {
         updateName(
-            { 
+            {
                 name: data.name || ""
             },
             {
@@ -52,10 +53,12 @@ export const CompleteProfileStep = ({ onComplete }: CompleteProfileStepProps) =>
         <Card className="w-full bg-white rounded-lg shadow-lg border-none mx-auto">
             <CardHeader className="flex flex-col items-center justify-center text-center p-6 md:p-7 pb-4">
                 <CardTitle className="text-xl md:text-2xl font-bold text-gray-900">
-                    Complete Your Profile
+                    Step 2: Your Name
                 </CardTitle>
                 <CardDescription className="text-center text-sm md:text-base text-gray-600 mt-2">
-                    Tell us your name to personalize your experience
+                    {user?.user_metadata?.full_name
+                        ? "Do you want to change your profile name?"
+                        : "Tell us your name to personalize your experience"}
                 </CardDescription>
             </CardHeader>
             <CardContent className="p-6 md:p-7 pt-4">
@@ -66,27 +69,28 @@ export const CompleteProfileStep = ({ onComplete }: CompleteProfileStepProps) =>
                             control={form.control}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Name</FormLabel>
+                                    <FormLabel>Profile Name</FormLabel>
                                     <FormControl>
                                         <Input
                                             {...field}
                                             type="text"
                                             placeholder="Enter your name"
                                             disabled={isPending}
+                                            autoFocus
                                         />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        
+
                         <Button
                             type="submit"
                             disabled={isPending}
                             size="lg"
                             className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm md:text-base"
                         >
-                            {isPending ? "Saving..." : "Save Changes"}
+                            {isPending ? "Saving..." : "Continue"}
                         </Button>
                     </form>
                 </Form>

@@ -4,7 +4,6 @@ Project API Endpoints - Full CRUD operations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import UUID
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -18,7 +17,7 @@ router = APIRouter()
 
 @router.get("/workspaces/{workspace_id}/projects", response_model=List[ProjectResponse])
 async def list_projects(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -30,7 +29,7 @@ async def list_projects(
 
 @router.post("/workspaces/{workspace_id}/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(
-    workspace_id: UUID,
+    workspace_id: str,
     project_data: ProjectCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -55,7 +54,7 @@ async def create_project(
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -74,7 +73,7 @@ async def get_project(
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
 async def update_project(
-    project_id: UUID,
+    project_id: str,
     project_data: ProjectUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -94,7 +93,7 @@ async def update_project(
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -113,7 +112,7 @@ async def delete_project(
 
 @router.get("/{project_id}/analytics")
 async def get_project_analytics(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

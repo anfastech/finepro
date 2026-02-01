@@ -12,31 +12,26 @@ export const OnboardingFlow = () => {
     const { data: user } = useCurrent();
 
     // Determine which step to start with
-    // If user already has a password, skip password step
-    // If user has a name, skip profile step
-    // Always show workspace step if no workspaces exist
-    const needsPassword = true; // OAuth users need to set password
-    const needsProfile = !user?.user_metadata?.full_name || user?.user_metadata?.full_name.trim() === "";
-    const needsWorkspace = true; // Always need at least one workspace
-
+    // Sequence: password -> profile -> workspace
     const [step, setStep] = useState<OnboardingStep>("password");
 
-    // Update step when user data loads
     useEffect(() => {
-        const getInitialStep = (): OnboardingStep => {
-            if (needsPassword) return "password";
-            if (needsProfile) return "profile";
-            return "workspace";
-        };
-        setStep(getInitialStep());
-    }, [user, needsProfile, needsPassword]);
+        if (user) {
+            const hasPassword = user.user_metadata?.has_password;
+            const hasName = user.user_metadata?.full_name && user.user_metadata.full_name.trim() !== "";
+
+            if (!hasPassword) {
+                setStep("password");
+            } else if (!hasName) {
+                setStep("profile");
+            } else {
+                setStep("workspace");
+            }
+        }
+    }, [user]);
 
     const handlePasswordComplete = () => {
-        if (needsProfile) {
-            setStep("profile");
-        } else {
-            setStep("workspace");
-        }
+        setStep("profile");
     };
 
     const handleProfileComplete = () => {
@@ -47,24 +42,8 @@ export const OnboardingFlow = () => {
         // Redirect will be handled by CreateWorkspaceStep
     };
 
-    const getStepNumber = (stepName: OnboardingStep): number => {
-        const steps: OnboardingStep[] = [];
-        if (needsPassword) steps.push("password");
-        if (needsProfile) steps.push("profile");
-        if (needsWorkspace) steps.push("workspace");
-        return steps.indexOf(stepName) + 1;
-    };
-
-    const getTotalSteps = (): number => {
-        let count = 0;
-        if (needsPassword) count++;
-        if (needsProfile) count++;
-        if (needsWorkspace) count++;
-        return count;
-    };
-
-    const currentStepNumber = getStepNumber(step);
-    const totalSteps = getTotalSteps();
+    const currentStepNumber = step === "password" ? 1 : step === "profile" ? 2 : 3;
+    const totalSteps = 3;
 
     return (
         <div className="w-full max-w-[487px] mx-auto">
@@ -87,13 +66,13 @@ export const OnboardingFlow = () => {
             </div>
 
             {/* Step Content */}
-            {step === "password" && needsPassword && (
+            {step === "password" && (
                 <CreatePasswordStep onComplete={handlePasswordComplete} />
             )}
-            {step === "profile" && needsProfile && (
+            {step === "profile" && (
                 <CompleteProfileStep onComplete={handleProfileComplete} />
             )}
-            {step === "workspace" && needsWorkspace && (
+            {step === "workspace" && (
                 <CreateWorkspaceStep onComplete={handleWorkspaceComplete} />
             )}
         </div>

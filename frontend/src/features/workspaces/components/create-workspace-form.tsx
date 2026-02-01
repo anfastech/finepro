@@ -51,7 +51,7 @@ export const CreateWorkspaceForm = ({ onCancel, skipCardWrapper = false }: Creat
     };
 
     mutate(
-      { json: finalValues },
+      { form: finalValues },
       {
         onSuccess: ({ data }) => {
           form.reset();

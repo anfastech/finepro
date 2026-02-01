@@ -15,6 +15,7 @@ export const getCurrent = async () => {
       email: user.email,
       name: user.user_metadata?.full_name || user.user_metadata?.name,
       avatar_url: user.user_metadata?.avatar_url,
+      has_password: user.user_metadata?.has_password,
     };
   } catch {
     return null;

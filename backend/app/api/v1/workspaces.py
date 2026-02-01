@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from uuid import UUID
 
 from app.database import get_db
+# ... imports ...
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.enums import ActionType, EntityType
@@ -58,7 +58,7 @@ async def create_workspace(
 
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)
 async def get_workspace(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -80,7 +80,7 @@ async def get_workspace(
 
 @router.patch("/{workspace_id}", response_model=WorkspaceResponse)
 async def update_workspace(
-    workspace_id: UUID,
+    workspace_id: str,
     workspace_data: WorkspaceUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -114,7 +114,7 @@ async def update_workspace(
 
 @router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workspace(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -144,7 +144,7 @@ async def delete_workspace(
 
 @router.get("/{workspace_id}/analytics")
 async def get_workspace_analytics(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -163,7 +163,7 @@ async def get_workspace_analytics(
 
 @router.get("/{workspace_id}/info", response_model=WorkspaceResponse)
 async def get_workspace_info(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -178,7 +178,7 @@ async def get_workspace_info(
 
 @router.post("/{workspace_id}/join", response_model=WorkspaceResponse)
 async def join_workspace(
-    workspace_id: UUID,
+    workspace_id: str,
     invite_code: str = Query(..., alias="inviteCode"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -194,7 +194,7 @@ async def join_workspace(
 
 @router.post("/{workspace_id}/reset-invite-code", response_model=WorkspaceResponse)
 async def reset_invite_code(
-    workspace_id: UUID,
+    workspace_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

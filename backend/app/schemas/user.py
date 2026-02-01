@@ -24,6 +24,8 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    has_password: Optional[bool] = None
     role: Optional[UserRole] = None
     skills: Optional[Dict[str, Any]] = None
     availability: Optional[Dict[str, Any]] = None
@@ -35,8 +37,9 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
+    id: str
     supabase_id: str
+    avatar_url: Optional[str] = None
     last_sync: datetime
     created_at: datetime
     updated_at: Optional[datetime] = None

@@ -60,6 +60,30 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests"""
+    start_time = time.time()
+    
+    # Log request details
+    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    
+    # Log authorization header (redacted)
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        token_part = auth_header[:15] + "..." if len(auth_header) > 15 else "SHORT"
+        logger.info(f"Authorization Header: {token_part}")
+    else:
+        logger.warning("No Authorization Header present")
+        
+    response = await call_next(request)
+    
+    process_time = time.time() - start_time
+    logger.info(f"Request completed: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.4f}s")
+    
+    return response
+
+
 # Request timing middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
