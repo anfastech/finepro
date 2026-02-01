@@ -1,11 +1,11 @@
-import { Models } from "node-appwrite";
+import { DatabaseDocument } from "@/lib/database";
 
-export type Team = Models.Document & {
+export type Team = DatabaseDocument & {
   name: string;
   workspaceId: string;
   description?: string;
   imageUrl?: string;
-  memberIds: string[]; // Array of member/user IDs
-  color?: string; // Optional team color for UI
+  memberIds: string[];
+  color?: string;
 };
 

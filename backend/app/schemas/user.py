@@ -19,7 +19,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    appwrite_id: str
+    supabase_id: str
 
 
 class UserUpdate(BaseModel):
@@ -36,7 +36,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: UUID
-    appwrite_id: str
+    supabase_id: str
     last_sync: datetime
     created_at: datetime
     updated_at: Optional[datetime] = None

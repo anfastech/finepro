@@ -6,13 +6,17 @@ import logging
 import time
 
 from .config import settings
-from .database import init_db
+# from .supabase_settings import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET
+# from .database import init_db  # Disabled - using Supabase instead
 from .api.v1.router import api_router
 from .core.websocket_manager import ws_manager
 
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -21,12 +25,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("Starting up FinePro AI Backend...")
-    try:
-        await init_db()
-        logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+    # Note: Using Supabase instead of local PostgreSQL database
+    # await init_db()  # Disabled - using Supabase
+    logger.info("Backend ready (using Supabase)")
     
     yield
     

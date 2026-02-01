@@ -1,51 +1,60 @@
 import z from "zod";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
-
-import { Project } from "@/features/projects/types";
-import { getMember } from "@/features/members/utils";
-
-import { createAdminClient } from "@/lib/appwrite";
-import { sessionMiddleware } from "@/lib/session-middleware";
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID } from "@/config";
-
-import { Task, TaskStatus } from "../types";
+import { createSupabaseClient } from "@/lib/supabase-server";
+import { TaskStatus } from "../types";
 import { updateTaskSchema } from "../schemas";
 import { createTaskSchema } from "../schemas";
 
 const app = new Hono()
-  .delete("/:taskId", sessionMiddleware, async (c) => {
-    const user = c.get("user");
-    const databases = c.get("database");
-
-    const { taskId } = c.req.param();
-
-    const task = await databases.getDocument<Task>(
-      DATABASE_ID,
-      TASKS_ID,
-      taskId
-    );
-
-    // console.log("🏁🏁 \n 🏁🏁 Task to delete: \n 🏁", task);
-
-    const member = await getMember({
-      databases,
-      workspaceId: task.workspaceId,
-      userId: user.$id,
-    });
-
-    if (!member) {
+  .delete("/:taskId", async (c) => {
+    const supabase = await createSupabaseClient();
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+    const { taskId } = c.req.param();
 
-    return c.json({ data: { $id: task.$id } });
+    // Get task to delete
+    const { data: task, error: taskError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (taskError || !task) {
+      return c.json({ error: "Task not found" }, 404);
+    }
+
+    // Check if user is a member of this workspace
+    const { data: member, error: memberError } = await supabase
+      .from('members')
+      .select('*')
+      .eq('workspace_id', task.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (memberError || !member) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    // Delete task
+    const { error: deleteError } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (deleteError) {
+      return c.json({ error: deleteError.message }, 500);
+    }
+
+    return c.json({ data: { $id: task.id } });
   })
   .get(
     "/",
-    sessionMiddleware,
     zValidator(
       "query",
       z.object({
@@ -59,9 +68,13 @@ const app = new Hono()
       })
     ),
     async (c) => {
-      const { users } = await createAdminClient();
-      const databases = c.get("database");
-      const user = c.get("user");
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
 
       const { workspaceId, projectId, status, search, assigneeId, dueDate, teamId } =
         c.req.valid("query");
@@ -69,431 +82,303 @@ const app = new Hono()
       if (!workspaceId) {
         return c.json({ error: "Missing workspaceId" }, 400);
       }
-      if (!workspaceId) {
-        return c.json({ error: "Missing workspaceId" }, 400);
-      }
-      const member = await getMember({
-        databases,
-        workspaceId: workspaceId,
-        userId: user.$id,
-      });
 
-      if (!member) {
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const query = [
-        Query.equal("workspaceId", workspaceId),
-        Query.orderDesc("$createdAt"),
-      ];
+      // Build query
+      let query = supabase
+        .from('tasks')
+        .select(`
+          *,
+          project:projects (
+            id,
+            name,
+            image_url
+          ),
+          assigned_user:profiles (
+            id,
+            name,
+            email,
+            avatar_color
+          )
+        `)
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
 
       if (projectId) {
-        // console.log("projectId: ", projectId);
-        query.push(Query.equal("projectId", projectId));
+        query = query.eq('project_id', projectId);
       }
 
       if (status) {
-        // console.log("status: ", status);
-        query.push(Query.equal("status", status));
+        query = query.eq('status', status);
       }
 
       if (assigneeId) {
-        // console.log("assigneeId: ", assigneeId);
-        query.push(Query.equal("assigneeId", assigneeId));
-      }
-
-      if (dueDate) {
-        // console.log("dueDate: ", dueDate);
-        query.push(Query.equal("dueDate", dueDate));
+        query = query.eq('assignee_id', assigneeId);
       }
 
       if (search) {
-        // console.log("search: ", search);
-        query.push(Query.search("name", search));
+        query = query.ilike('title', `%${search}%`);
       }
 
-      const tasks = await databases.listDocuments<Task>(
-        DATABASE_ID,
-        TASKS_ID,
-        query
-      );
-
-      const projectIds = tasks.documents.map((task) => task.projectId);
-      const assigneeIds = tasks.documents.map((task) => task.assigneeId).filter(id => id); // Filter out null/undefined
-
-      const projects = await databases.listDocuments<Project>(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectIds.length > 0 ? [Query.contains("$id", projectIds)] : []
-      );
-
-      // Only query members if there are assigneeIds
-      let members = { documents: [] };
-      if (assigneeIds.length > 0) {
-        members = await databases.listDocuments(
-          DATABASE_ID,
-          MEMBERS_ID,
-          [Query.contains("$id", assigneeIds)]
-        );
+      if (teamId) {
+        query = query.eq('team_id', teamId);
       }
 
-      // Batch fetch all users at once to avoid N+1 queries (only if there are members)
-      type Assignee = {
-        $id: string;
-        userId: string;
-        name: string;
-        email: string;
-        avatarColor?: { bg: string; text: string };
-      };
-      
-      let assignees: Assignee[] = [];
-      if (members.documents.length > 0) {
-        const uniqueUserIds = [...new Set(members.documents.map((m: { userId: string }) => m.userId))];
-        const allUsers = await Promise.all(
-            uniqueUserIds.map(userId => 
-                users.get(userId).catch(() => null)
-            )
-        );
-
-        // Create a map for quick lookup
-        const userMap = new Map();
-        allUsers.forEach((user, index) => {
-            if (user) {
-                userMap.set(uniqueUserIds[index], user);
-            }
-        });
-
-        // Populate assignees using the map
-        assignees = members.documents.map((member: { $id: string; userId: string }) => {
-            const user = userMap.get(member.userId);
-            
-            if (!user) {
-                // Fallback for deleted users
-                return {
-                    $id: member.$id,
-                    userId: member.userId,
-                    name: "Unknown User",
-                    email: "unknown@example.com",
-                    avatarColor: { bg: "bg-gray-100", text: "text-gray-700" },
-                };
-            }
-            
-            const avatarColor = user.prefs?.avatarColor as { bg: string; text: string } | undefined;
-
-            return {
-                $id: member.$id,
-                userId: member.userId,
-                name: user.name || user.email,
-                email: user.email,
-                avatarColor,
-            };
-        });
+      if (dueDate) {
+        query = query.lte('due_date', dueDate);
       }
 
-      const populatedTasks = tasks.documents.map((task) => {
-        const project = projects.documents.find(
-          (project) => project.$id === task.projectId
-        );
-        const assignee = assignees.find(
-          (assignee) => assignee.$id === task.assigneeId
-        );
+      const { data: tasks, error: tasksError } = await query;
 
-        // console.log("Mapping task: 🏁🏁🏁", task.$id, { project, assignee });
+      if (tasksError) {
+        return c.json({ error: tasksError.message }, 500);
+      }
 
-        return {
-          ...task,
-          project,
-          assignee,
-        };
-      });
-
-      return c.json({
-        ...tasks,
-        documents: populatedTasks,
+      return c.json({ 
+        data: {
+          documents: tasks || [],
+          total: tasks?.length || 0,
+        }
       });
     }
   )
   .post(
     "/",
-    sessionMiddleware,
     zValidator("json", createTaskSchema),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
-      const { 
-        name, 
-        status, 
-        workspaceId, 
-        projectId, 
-        dueDate, 
-        assigneeId,
-        description,
-        startTime,
-        endTime,
-        duration,
-        totalSubtasks,
-        completedSubtasks,
-        priority,
-        isUrgent,
-        teamId,
-      } = c.req.valid("json");
-
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const highestPositionTask = await databases.listDocuments(
-        DATABASE_ID,
-        TASKS_ID,
-        [
-          Query.equal("status", status),
-          Query.equal("workspaceId", workspaceId),
-          Query.orderAsc("position"),
-          Query.limit(1),
-        ]
-      );
+      const { name, status, projectId, assigneeId, dueDate, description } = c.req.valid("json");
 
-      const newPosition =
-        highestPositionTask.documents.length > 0
-          ? highestPositionTask.documents[0].position + 1000
-          : 1000;
+      // Get project to check workspace
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('workspace_id')
+        .eq('id', projectId)
+        .single();
 
-      const task = await databases.createDocument(
-        DATABASE_ID,
-        TASKS_ID,
-        ID.unique(),
-        {
-          name,
-          status,
-          workspaceId,
-          projectId,
-          dueDate: dueDate.toISOString(),
-          assigneeId,
-          position: newPosition,
-          description,
-          startTime,
-          endTime,
-          duration,
-          totalSubtasks,
-          completedSubtasks,
-          priority,
-          isUrgent,
-          teamId,
-        }
-      );
+      if (projectError || !project) {
+        return c.json({ error: "Project not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', project.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Get next position
+      const { data: lastTask } = await supabase
+        .from('tasks')
+        .select('position')
+        .eq('workspace_id', project.workspace_id)
+        .order('position', { ascending: false })
+        .limit(1);
+
+      const nextPosition = (lastTask?.[0]?.position || 0) + 1;
+
+      // Create task
+      const { data: task, error: createError } = await supabase
+        .from('tasks')
+        .insert({
+          title: name,
+          status: status || TaskStatus.TODO,
+          project_id: projectId,
+          workspace_id: project.workspace_id,
+          assignee_id: assigneeId || null,
+          due_date: dueDate ? new Date(dueDate).toISOString() : null,
+          description: description || null,
+          position: nextPosition,
+          priority: 'MEDIUM',
+        })
+        .select(`
+          *,
+          project:projects (
+            id,
+            name,
+            image_url
+          ),
+          assigned_user:profiles (
+            id,
+            name,
+            email,
+            avatar_color
+          )
+        `)
+        .single();
+
+      if (createError) {
+        return c.json({ error: createError.message }, 500);
+      }
 
       return c.json({ data: task });
     }
   )
   .patch(
     "/:taskId",
-    sessionMiddleware,
     zValidator("json", updateTaskSchema),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
-      const { 
-        name, 
-        status, 
-        description, 
-        projectId, 
-        dueDate, 
-        assigneeId,
-        startTime,
-        endTime,
-        duration,
-        totalSubtasks,
-        completedSubtasks,
-        priority,
-        isUrgent,
-        teamId,
-      } = c.req.valid("json");
-
-      const { taskId } = c.req.param();
-
-      const existingTask = await databases.getDocument<Task>(
-        DATABASE_ID,
-        TASKS_ID,
-        taskId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: existingTask.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const updateData: Record<string, unknown> = {};
-      
-      if (name !== undefined) updateData.name = name;
-      if (status !== undefined) updateData.status = status;
-      if (projectId !== undefined) updateData.projectId = projectId;
-      if (dueDate !== undefined) updateData.dueDate = dueDate.toISOString();
-      if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
-      if (description !== undefined) updateData.description = description;
-      if (startTime !== undefined) updateData.startTime = startTime;
-      if (endTime !== undefined) updateData.endTime = endTime;
-      if (duration !== undefined) updateData.duration = duration;
-      if (totalSubtasks !== undefined) updateData.totalSubtasks = totalSubtasks;
-      if (completedSubtasks !== undefined) updateData.completedSubtasks = completedSubtasks;
-      if (priority !== undefined) updateData.priority = priority;
-      if (isUrgent !== undefined) updateData.isUrgent = isUrgent;
-      if (teamId !== undefined) updateData.teamId = teamId;
+      const { taskId } = c.req.param();
+      const { name, status, assigneeId, dueDate, description } = c.req.valid("json");
 
-      const task = await databases.updateDocument<Task>(
-        DATABASE_ID,
-        TASKS_ID,
-        taskId,
-        updateData
-      );
+      // Get existing task
+      const { data: existingTask, error: taskError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId)
+        .single();
+
+      if (taskError || !existingTask) {
+        return c.json({ error: "Task not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', existingTask.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Update task
+      const updateData: Record<string, any> = {};
+      if (name !== undefined) updateData.title = name;
+      if (status !== undefined) updateData.status = status;
+      if (assigneeId !== undefined) updateData.assignee_id = assigneeId;
+      if (dueDate !== undefined) updateData.due_date = dueDate ? new Date(dueDate).toISOString() : null;
+      if (description !== undefined) updateData.description = description;
+
+      const { data: task, error: updateError } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', taskId)
+        .select(`
+          *,
+          project:projects (
+            id,
+            name,
+            image_url
+          ),
+          assigned_user:profiles (
+            id,
+            name,
+            email,
+            avatar_color
+          )
+        `)
+        .single();
+
+      if (updateError) {
+        return c.json({ error: updateError.message }, 500);
+      }
 
       return c.json({ data: task });
     }
   )
-  .get("/:taskId", sessionMiddleware, async (c) => {
-    const currentUser = c.get("user");
-    const databases = c.get("database");
-    const { users } = await createAdminClient();
-    const { taskId } = c.req.param();
-
-    const task = await databases.getDocument<Task>(
-      DATABASE_ID,
-      TASKS_ID,
-      taskId
-    );
-
-    const currentMember = await getMember({
-      databases,
-      workspaceId: task.workspaceId,
-      userId: currentUser.$id,
-    });
-
-    if (!currentMember) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const project = await databases.getDocument<Project>(
-      DATABASE_ID,
-      PROJECTS_ID,
-      task.projectId
-    );
-
-    const member = await databases.getDocument(
-      DATABASE_ID,
-      MEMBERS_ID,
-      task.assigneeId
-    );
-
-    let user;
-    try {
-      user = await users.get(member.userId);
-    } catch {
-      // User was deleted - use fallback values
-      const assignee = {
-        ...member,
-        name: member.name || "Deleted User",
-        email: member.email || "deleted@user.com",
-      };
-      
-      return c.json({
-        data: {
-          ...task,
-          project,
-          assignee,
-        }
-      });
-    }
-
-    const assignee = {
-      ...member,
-      name: user.name || user.email,
-      email: user.email,
-    };
-
-    return c.json({
-      data: {
-        ...task,
-        project,
-        assignee,
-      },
-    });
-  })
-  .post(
-    "/bulk-update",
-    sessionMiddleware,
+  .patch(
+    "/:taskId/bulk-update",
     zValidator(
       "json",
       z.object({
         tasks: z.array(
           z.object({
-            $id: z.string(),
-            status: z.nativeEnum(TaskStatus),
-            position: z.number().int().positive().min(1000).max(1_000_000),
+            id: z.string(),
+            status: z.nativeEnum(TaskStatus).optional(),
+            position: z.number().optional(),
           })
         ),
       })
     ),
     async (c) => {
-      const databases = c.get("database");
-      const user = c.get("user");
-      const { tasks } = c.req.valid("json");
-
-      const tasksToUpdate = await databases.listDocuments<Task>(
-        DATABASE_ID,
-        TASKS_ID,
-        [
-          Query.contains(
-            "$id",
-            tasks.map((task) => task.$id)
-          ),
-        ]
-      );
-
-      const workspaceIds = new Set(
-        tasksToUpdate.documents.map((task) => task.workspaceId)
-      );
-
-      if (workspaceIds.size !== 1) {
-        return c.json({ error: "All tasks must belong to the same workspace" });
-      }
-
-      const workspaceId = workspaceIds.values().next().value;
-
-      if (!workspaceId) {
-        return c.json({ error: "Workspace ID is required" }, 400);
-      }
-
-      const member = await getMember({
-        databases,
-        workspaceId: workspaceId as string,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const updatedTasks = await Promise.all(
-        tasks.map(async (task) => {
-          const { $id, status, position } = task;
-          return databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, {
-            status,
-            position,
-          });
-        })
-      );
+      const { tasks } = c.req.valid("json");
 
-      return c.json({ data: updatedTasks });
+      // Get first task to determine workspace
+      const { data: firstTask, error: firstTaskError } = await supabase
+        .from('tasks')
+        .select('workspace_id')
+        .eq('id', tasks[0].id)
+        .single();
+
+      if (firstTaskError || !firstTask) {
+        return c.json({ error: "Task not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', firstTask.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Bulk update tasks
+      const updatePromises = tasks.map(task => {
+        const updateData: Record<string, any> = {};
+        if (task.status !== undefined) updateData.status = task.status;
+        if (task.position !== undefined) updateData.position = task.position;
+
+        return supabase
+          .from('tasks')
+          .update(updateData)
+          .eq('id', task.id);
+      });
+
+      const results = await Promise.all(updatePromises);
+
+      // Check for any errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        return c.json({ error: "Some updates failed" }, 500);
+      }
+
+      return c.json({ data: { success: true } });
     }
   );
 

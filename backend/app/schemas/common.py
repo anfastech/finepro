@@ -16,13 +16,13 @@ class TokenData(BaseModel):
     email: Optional[str] = None
 
 
-class AppwriteTokenRequest(BaseModel):
-    """Request to verify Appwrite JWT and get FastAPI tokens"""
-    appwrite_token: str
+class SupabaseTokenRequest(BaseModel):
+    """Request to verify Supabase JWT and get FastAPI tokens"""
+    supabase_token: str
 
 
-class AppwriteTokenResponse(BaseModel):
-    """Response with user info from Appwrite token"""
+class SupabaseTokenResponse(BaseModel):
+    """Response with user info from Supabase token"""
     user_id: str
     email: str
     name: str

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { WS_URL } from "@/config";
 import { api } from "@/lib/api";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/api/v1/ws";
 
 export enum MessageType {
     MESSAGE = "message",
@@ -34,23 +34,10 @@ export const useWebSocket = (workspaceId?: string) => {
         // We can't really "await" inside useEffect comfortably, so we handle it here
         const fetchAndConnect = async () => {
             try {
-                // We use the internal fetchToken via api.request (or expose it)
-                // Actually, we can just call api.get('/auth/me') or similar to trigger token fetch
-                // But let's assume we want the token directly.
-                // I'll add a helper to lib/api.ts to get the token if needed, or just use the bridge logic
-                const response = await fetch("/api/auth/jwt");
-                const { jwt } = await response.json();
-
-                // Exchange for FastAPI token
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-                const exchangeResponse = await fetch(`${API_URL}/auth/exchange`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ appwrite_token: jwt })
-                });
-
-                if (!exchangeResponse.ok) throw new Error("WS Auth Failed");
-                const { access_token } = await exchangeResponse.json();
+                // Get Supabase session
+                const response = await fetch("/api/auth/session");
+                if (!response.ok) throw new Error("Failed to get session");
+                const { access_token } = await response.json();
 
                 const ws = new WebSocket(`${WS_URL}/connect/${access_token}`);
 

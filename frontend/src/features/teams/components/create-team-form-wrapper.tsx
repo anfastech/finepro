@@ -12,10 +12,10 @@ export const CreateTeamFormWrapper = ({ onCancel }: CreateTeamFormWrapperProps) 
     const workspaceId = useWorkspaceId();
     const { data: members } = useGetMembers({ workspaceId });
 
-    const memberOptions = members?.documents.map((member) => ({
-        id: member.$id,
+    const memberOptions = members?.documents.map((member: any) => ({
+        id: member.$id || member.id,
         name: member.name || member.email || "",
-        avatarColor: member.avatarColor,
+        avatarColor: member.avatarColor || member.avatar_color,
     })) || [];
 
     return (

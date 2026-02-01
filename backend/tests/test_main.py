@@ -22,22 +22,22 @@ class TestHealthCheck:
 class TestAuth:
     """Test authentication endpoints"""
     
-    def test_verify_appwrite_token_mock(self):
-        """Test Appwrite token verification with mock token"""
+    def test_verify_supabase_token_mock(self):
+        """Test Supabase token verification with mock token"""
         with TestClient(app) as client:
             response = client.post(
                 "/api/v1/auth/verify",
-                json={"appwrite_token": "mock_token"}
+                json={"supabase_token": "mock_token"}
             )
-            # Should return error since we don't have Appwrite connection
+            # Should return error since we don't have Supabase connection
             assert response.status_code == 401
     
-    def test_exchange_token_mock(self):
+    def test_exchange_supabase_token_mock(self):
         """Test token exchange endpoint"""
         with TestClient(app) as client:
             response = client.post(
                 "/api/v1/auth/exchange",
-                json={"appwrite_token": "mock_token"}
+                json={"supabase_token": "mock_token"}
             )
             # Should return mock token
             assert response.status_code == 200

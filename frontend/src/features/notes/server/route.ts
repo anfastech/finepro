@@ -1,73 +1,93 @@
 import z from "zod";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
-
-import { getMember } from "@/features/members/utils";
-import { DATABASE_ID, NOTES_ID } from "@/config";
-import { sessionMiddleware } from "@/lib/session-middleware";
+import { createSupabaseClient } from "@/lib/supabase-server";
 import { createNoteSchema, updateNoteSchema } from "../schemas";
 import { Note } from "../types";
 
 const app = new Hono()
   .get(
     "/",
-    sessionMiddleware,
     zValidator("query", z.object({ workspaceId: z.string(), projectId: z.string().optional() })),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
       const { workspaceId, projectId } = c.req.valid("query");
 
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const queries = [
-        Query.equal("workspaceId", workspaceId),
-        Query.orderDesc("lastEditedAt"),
-      ];
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .single();
 
-      if (projectId) {
-        queries.push(Query.equal("projectId", projectId));
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const notes = await databases.listDocuments<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        queries
-      );
+      // Build query
+      let query = supabase
+        .from('notes')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('last_edited_at', { ascending: false });
 
-      return c.json({ data: notes });
+      if (projectId) {
+        query = query.eq('project_id', projectId);
+      }
+
+      const { data: notes, error: notesError } = await query;
+
+      if (notesError) {
+        return c.json({ error: notesError.message }, 500);
+      }
+
+      return c.json({ 
+        data: {
+          documents: notes || [],
+          total: notes?.length || 0,
+        }
+      });
     }
   )
   .get(
     "/:noteId",
-    sessionMiddleware,
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
       const { noteId } = c.req.param();
 
-      const note = await databases.getDocument<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        noteId
-      );
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
 
-      const member = await getMember({
-        databases,
-        workspaceId: note.workspaceId,
-        userId: user.$id,
-      });
+      // Get note
+      const { data: note, error: noteError } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', noteId)
+        .single();
 
-      if (!member) {
+      if (noteError || !note) {
+        return c.json({ error: "Note not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', note.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -76,107 +96,151 @@ const app = new Hono()
   )
   .post(
     "/",
-    sessionMiddleware,
     zValidator("json", createNoteSchema),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
       const { title, content, workspaceId, projectId } = c.req.valid("json");
 
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const note = await databases.createDocument<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        ID.unique(),
-        {
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Create note
+      const { data: note, error: createError } = await supabase
+        .from('notes')
+        .insert({
           title,
           content: content || "",
-          workspaceId,
-          projectId: projectId || undefined,
-          lastEditedAt: new Date().toISOString(),
-        }
-      );
+          workspace_id: workspaceId,
+          project_id: projectId || null,
+          last_edited_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        return c.json({ error: createError.message }, 500);
+      }
 
       return c.json({ data: note });
     }
   )
   .patch(
     "/:noteId",
-    sessionMiddleware,
     zValidator("json", updateNoteSchema),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
       const { noteId } = c.req.param();
       const updateData = c.req.valid("json");
 
-      const existingNote = await databases.getDocument<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        noteId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: existingNote.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const note = await databases.updateDocument<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        noteId,
-        {
+      // Get existing note
+      const { data: existingNote, error: noteError } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', noteId)
+        .single();
+
+      if (noteError || !existingNote) {
+        return c.json({ error: "Note not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', existingNote.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Update note
+      const { data: note, error: updateError } = await supabase
+        .from('notes')
+        .update({
           ...updateData,
-          lastEditedAt: new Date().toISOString(),
-        }
-      );
+          last_edited_at: new Date().toISOString(),
+        })
+        .eq('id', noteId)
+        .select()
+        .single();
+
+      if (updateError) {
+        return c.json({ error: updateError.message }, 500);
+      }
 
       return c.json({ data: note });
     }
   )
   .delete(
     "/:noteId",
-    sessionMiddleware,
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
       const { noteId } = c.req.param();
 
-      const note = await databases.getDocument<Note>(
-        DATABASE_ID,
-        NOTES_ID,
-        noteId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: note.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      await databases.deleteDocument(DATABASE_ID, NOTES_ID, noteId);
+      // Get note to check workspace
+      const { data: note, error: noteError } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', noteId)
+        .single();
+
+      if (noteError || !note) {
+        return c.json({ error: "Note not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', note.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Delete note
+      const { error: deleteError } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (deleteError) {
+        return c.json({ error: deleteError.message }, 500);
+      }
 
       return c.json({ data: { success: true } });
     }
   );
 
 export default app;
-

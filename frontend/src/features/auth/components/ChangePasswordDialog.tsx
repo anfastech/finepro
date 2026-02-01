@@ -42,9 +42,11 @@ export const ChangePasswordDialog = ({ open, onOpenChange }: ChangePasswordDialo
         },
     });
 
-    const onSubmit = (data: z.infer<typeof changePasswordSchema>) => {
-        changePassword(
-            { json: data },
+const onSubmit = (data: z.infer<typeof changePasswordSchema>) => {
+        changePassword({
+            currentPassword: data.currentPassword,
+            newPassword: data.newPassword
+        },
             {
                 onSuccess: () => {
                     form.reset();

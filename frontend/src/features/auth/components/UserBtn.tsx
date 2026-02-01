@@ -66,7 +66,9 @@ export const UserBtn = () => {
     return null;
   }
 
-  const { name, email, prefs } = user;
+const name = user?.user_metadata?.full_name || user?.user_metadata?.name;
+  const email = user?.email;
+  const prefs = user?.user_metadata?.prefs;
   const displayName = name || email || "User";
 
   const avatarfallback = displayName.charAt(0).toUpperCase();

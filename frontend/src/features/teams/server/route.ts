@@ -1,120 +1,135 @@
 import z from "zod";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
-
-import { getMember } from "@/features/members/utils";
-import { DATABASE_ID, IMAGE_BUCKET_ID, TEAMS_ID, MEMBERS_ID } from "@/config";
-import { sessionMiddleware } from "@/lib/session-middleware";
+import { createSupabaseClient } from "@/lib/supabase-server";
 import { createTeamSchema, updateTeamSchema, addTeamMembersSchema, removeTeamMembersSchema } from "../schemas";
 import { Team } from "../types";
 
 const app = new Hono()
   .post(
     "/",
-    sessionMiddleware,
-    zValidator("form", createTeamSchema),
+    zValidator("json", createTeamSchema), // Changed from form to json
     async (c) => {
-      const databases = c.get("database");
-      const storage = c.get("storage");
-      const user = c.get("user");
-
-      const { name, workspaceId, description, image, color } = c.req.valid("form");
-
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      let uploadedImageUrl: string | undefined;
+      const { name, workspaceId, description, color } = c.req.valid("json");
 
-      if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGE_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-        uploadedImageUrl = `/api/workspaces/file/${file.$id}`;
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const team = await databases.createDocument(
-        DATABASE_ID,
-        TEAMS_ID,
-        ID.unique(),
-        {
+      // Create team
+      const { data: team, error: createError } = await supabase
+        .from('teams')
+        .insert({
           name,
-          workspaceId,
-          description: description || undefined,
-          imageUrl: uploadedImageUrl,
-          memberIds: [],
-          color: color || undefined,
-        }
-      );
+          workspace_id: workspaceId,
+          description: description || null,
+          color: color || '#3B82F6',
+          image_url: null, // TODO: Implement image upload with Supabase Storage
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        return c.json({ error: createError.message }, 500);
+      }
 
       return c.json({ data: team });
     }
   )
   .get(
     "/",
-    sessionMiddleware,
     zValidator("query", z.object({ workspaceId: z.string() })),
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
-      const { workspaceId } = c.req.valid("query");
-
-      if (!workspaceId) {
-        return c.json({ error: "Missing workspace ID" }, 400);
-      }
-
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const teams = await databases.listDocuments<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        [
-          Query.equal("workspaceId", workspaceId),
-          Query.orderDesc("$createdAt"),
-        ]
-      );
+      const { workspaceId } = c.req.valid("query");
 
-      return c.json({ data: teams });
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Get teams
+      const { data: teams, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: false });
+
+      if (teamsError) {
+        return c.json({ error: teamsError.message }, 500);
+      }
+
+      return c.json({ 
+        data: {
+          documents: teams || [],
+          total: teams?.length || 0,
+        }
+      });
     }
   )
   .get(
     "/:teamId",
-    sessionMiddleware,
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
       const { teamId } = c.req.param();
 
-      const team = await databases.getDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId
-      );
+      // Get team
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single();
 
-      const member = await getMember({
-        databases,
-        workspaceId: team.workspaceId,
-        userId: user.$id,
-      });
+      if (teamError || !team) {
+        return c.json({ error: "Team not found" }, 404);
+      }
 
-      if (!member) {
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', team.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -123,194 +138,220 @@ const app = new Hono()
   )
   .patch(
     "/:teamId",
-    sessionMiddleware,
-    zValidator("form", updateTeamSchema),
+    zValidator("json", updateTeamSchema),
     async (c) => {
-      const databases = c.get("database");
-      const storage = c.get("storage");
-      const user = c.get("user");
-      const { teamId } = c.req.param();
-      const { name, description, image, color } = c.req.valid("form");
-
-      const existingTeam = await databases.getDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: existingTeam.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      let uploadedImageUrl: string | undefined;
+      const { teamId } = c.req.param();
+      const { name, description, color } = c.req.valid("json");
 
-      if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGE_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-        uploadedImageUrl = `/api/workspaces/file/${file.$id}`;
-      } else if (image !== undefined) {
-        uploadedImageUrl = image;
+      // Get existing team
+      const { data: existingTeam, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single();
+
+      if (teamError || !existingTeam) {
+        return c.json({ error: "Team not found" }, 404);
       }
 
-      const updateData: Record<string, unknown> = {};
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', existingTeam.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Update team
+      const updateData: Record<string, any> = {};
       if (name !== undefined) updateData.name = name;
       if (description !== undefined) updateData.description = description;
-      if (uploadedImageUrl !== undefined) updateData.imageUrl = uploadedImageUrl;
       if (color !== undefined) updateData.color = color;
 
-      const team = await databases.updateDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId,
-        updateData
-      );
+      const { data: team, error: updateError } = await supabase
+        .from('teams')
+        .update(updateData)
+        .eq('id', teamId)
+        .select()
+        .single();
+
+      if (updateError) {
+        return c.json({ error: updateError.message }, 500);
+      }
 
       return c.json({ data: team });
     }
   )
   .delete(
     "/:teamId",
-    sessionMiddleware,
     async (c) => {
-      const user = c.get("user");
-      const databases = c.get("database");
-      const { teamId } = c.req.param();
-
-      const team = await databases.getDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: team.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      await databases.deleteDocument(DATABASE_ID, TEAMS_ID, teamId);
+      const { teamId } = c.req.param();
 
-      return c.json({ data: { $id: teamId } });
+      // Get team to delete
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single();
+
+      if (teamError || !team) {
+        return c.json({ error: "Team not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', team.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Delete team
+      const { error: deleteError } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+
+      if (deleteError) {
+        return c.json({ error: deleteError.message }, 500);
+      }
+
+      return c.json({ data: { id: team.id } });
     }
   )
   .post(
     "/:teamId/members",
-    sessionMiddleware,
     zValidator("json", addTeamMembersSchema),
     async (c) => {
-      const databases = c.get("database");
-      const user = c.get("user");
-      const { teamId } = c.req.param();
-      const { memberIds } = c.req.valid("json");
-
-      const team = await databases.getDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: team.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Validate that all memberIds are valid workspace members
-      const workspaceMembers = await databases.listDocuments(
-        DATABASE_ID,
-        MEMBERS_ID,
-        [Query.equal("workspaceId", team.workspaceId)]
-      );
+      const { teamId } = c.req.param();
+      const { memberIds } = c.req.valid("json");
 
-      const validMemberIds = workspaceMembers.documents.map((m) => m.$id);
-      const invalidIds = memberIds.filter((id) => !validMemberIds.includes(id));
+      // Get team
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('workspace_id')
+        .eq('id', teamId)
+        .single();
 
-      if (invalidIds.length > 0) {
-        return c.json(
-          { error: `Invalid member IDs: ${invalidIds.join(", ")}` },
-          400
-        );
+      if (teamError || !team) {
+        return c.json({ error: "Team not found" }, 404);
       }
 
-      // Merge new memberIds with existing ones (no duplicates)
-      const existingMemberIds = team.memberIds || [];
-      const updatedMemberIds = [
-        ...new Set([...existingMemberIds, ...memberIds]),
-      ];
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', team.workspace_id)
+        .eq('user_id', user.id)
+        .single();
 
-      const updatedTeam = await databases.updateDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId,
-        {
-          memberIds: updatedMemberIds,
-        }
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Add members to team
+      const updatePromises = memberIds.map(memberId => 
+        supabase
+          .from('members')
+          .update({ team_id: teamId })
+          .eq('user_id', memberId)
+          .eq('workspace_id', team.workspace_id)
       );
 
-      return c.json({ data: updatedTeam });
+      const results = await Promise.all(updatePromises);
+
+      // Check for any errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        return c.json({ error: "Some member updates failed" }, 500);
+      }
+
+      return c.json({ data: { success: true } });
     }
   )
   .delete(
     "/:teamId/members",
-    sessionMiddleware,
     zValidator("json", removeTeamMembersSchema),
     async (c) => {
-      const databases = c.get("database");
-      const user = c.get("user");
-      const { teamId } = c.req.param();
-      const { memberIds } = c.req.valid("json");
-
-      const team = await databases.getDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: team.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
+      const supabase = await createSupabaseClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Remove memberIds from array
-      const existingMemberIds = team.memberIds || [];
-      const updatedMemberIds = existingMemberIds.filter(
-        (id) => !memberIds.includes(id)
-      );
+      const { teamId } = c.req.param();
+      const { memberIds } = c.req.valid("json");
 
-      const updatedTeam = await databases.updateDocument<Team>(
-        DATABASE_ID,
-        TEAMS_ID,
-        teamId,
-        {
-          memberIds: updatedMemberIds,
-        }
-      );
+      // Get team
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('workspace_id')
+        .eq('id', teamId)
+        .single();
 
-      return c.json({ data: updatedTeam });
+      if (teamError || !team) {
+        return c.json({ error: "Team not found" }, 404);
+      }
+
+      // Check if user is a member of this workspace
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('workspace_id', team.workspace_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberError || !member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Remove members from team
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ team_id: null })
+        .eq('workspace_id', team.workspace_id)
+        .in('user_id', memberIds);
+
+      if (updateError) {
+        return c.json({ error: updateError.message }, 500);
+      }
+
+      return c.json({ data: { success: true } });
     }
   );
 
 export default app;
-

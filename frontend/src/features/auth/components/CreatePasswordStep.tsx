@@ -35,7 +35,7 @@ export const CreatePasswordStep = ({ onComplete }: CreatePasswordStepProps) => {
 
     const onSubmit = (data: z.infer<typeof setPasswordSchema>) => {
         setPassword(
-            { json: data },
+            { password: data.password },
             {
                 onSuccess: () => {
                     form.reset();

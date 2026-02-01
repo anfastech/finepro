@@ -10,7 +10,6 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 
-import { signInWithGoogle, signInWithGithub } from "@/lib/oauth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -50,8 +49,8 @@ export const SignInCard = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof loginSchema>) => {
-    mutate({json: values});
+const onSubmit = (values: z.infer<typeof loginSchema>) => {
+    mutate({email: values.email, password: values.password});
   };
 
   return (
@@ -60,26 +59,34 @@ export const SignInCard = () => {
         <CardTitle className="text-xl md:text-2xl font-bold text-gray-900">Welcome back!</CardTitle>
       </CardHeader>
       <CardContent className="p-6 md:p-7 pt-4 flex flex-col gap-y-4">
-        <Button
-          onClick={() => signInWithGoogle()}
-          disabled={isPending}
-          variant="secondary"
-          size="lg"
-          className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+<a
+          href="/auth/oauth?provider=google"
+          className="w-full"
         >
-          <FcGoogle className="mr-2 size-5" />
-          Sign in with Google
-        </Button>
-        <Button
-          onClick={() => signInWithGithub()}
-          disabled={isPending}
-          variant="secondary"
-          size="lg"
-          className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+          >
+            <FcGoogle className="mr-2 size-5" />
+            Sign in with Google
+          </Button>
+        </a>
+        <a
+          href="/auth/oauth?provider=github"
+          className="w-full"
         >
-          <FaGithub className="mr-2 size-5" />
-          Sign in with Github
-        </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+          >
+            <FaGithub className="mr-2 size-5" />
+            Sign in with Github
+          </Button>
+        </a>
       </CardContent>
       <div className="px-6 md:px-7 flex items-center gap-2 md:gap-3">
         <div className="flex-1 h-px bg-gray-300"></div>

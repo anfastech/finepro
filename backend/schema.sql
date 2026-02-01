@@ -325,10 +325,10 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "id" "uuid" NOT NULL,
     "email" character varying(255) NOT NULL,
     "name" character varying(255) NOT NULL,
-    "appwrite_id" character varying(255) NOT NULL,
+    "supabase_id" character varying(255) NOT NULL,
     "role" "public"."userrole",
     "skills" json,
-    "availability" json,
+    "availability" json,    
     "workload_percentage" integer,
     "preferences" json,
     "whatsapp_number" character varying(50),
@@ -345,7 +345,7 @@ ALTER TABLE "public"."users" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."workspaces" (
     "id" "uuid" NOT NULL,
     "name" character varying(255) NOT NULL,
-    "appwrite_id" character varying(255),
+    "supabase_id" character varying(255),
     "invite_code" character varying(32),
     "owner_id" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
@@ -416,7 +416,7 @@ ALTER TABLE ONLY "public"."workspaces"
 
 
 
-CREATE UNIQUE INDEX "ix_users_appwrite_id" ON "public"."users" USING "btree" ("appwrite_id");
+CREATE UNIQUE INDEX "ix_users_supabase_id" ON "public"."users" USING "btree" ("supabase_id");
 
 
 
@@ -424,7 +424,7 @@ CREATE UNIQUE INDEX "ix_users_email" ON "public"."users" USING "btree" ("email")
 
 
 
-CREATE UNIQUE INDEX "ix_workspaces_appwrite_id" ON "public"."workspaces" USING "btree" ("appwrite_id");
+CREATE UNIQUE INDEX "ix_workspaces_supabase_id" ON "public"."workspaces" USING "btree" ("supabase_id");
 
 
 

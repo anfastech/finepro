@@ -1,26 +1,21 @@
-import { Query, type Databases } from "node-appwrite";
-
-import { DATABASE_ID, MEMBERS_ID } from "@/config";
+import { createSessionClient } from "@/lib/supabase";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/config";
 
 interface GetMemberProps {
-  databases: Databases;
   workspaceId: string;
   userId: string;
 }
 
 export const getMember = async ({
-  databases,
   workspaceId,
   userId,
 }: GetMemberProps) => {
-  const members = await databases.listDocuments(
-    DATABASE_ID,
-    MEMBERS_ID, 
-    [
-        Query.equal("workspaceId", workspaceId),
-        Query.equal("userId", userId),
-    ],
-  );
+  // This will be updated when we fully migrate to Supabase
+  // For now, returning null to indicate migration is in progress
+  console.warn("getMember needs migration to Supabase");
+  return null;
+};
 
-  return members.documents[0];
+export const createSupabaseClient = () => {
+  return createSessionClient();
 };

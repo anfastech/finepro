@@ -1,14 +1,21 @@
-// only wanna use in server action 
-// "use server"; 
-
-import { createSessionClient } from "@/lib/appwrite";
+import { createSupabaseClient } from "@/lib/supabase-server";
 
 // protect 
 export const getCurrent = async () => {
   try {
-    const { account } = await createSessionClient();
+    const supabase = await createSupabaseClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    return await account.get();
+    if (error || !user) {
+      return null;
+    }
+
+    return {
+      $id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name || user.user_metadata?.name,
+      avatar_url: user.user_metadata?.avatar_url,
+    };
   } catch {
     return null;
     // redirect('/something')

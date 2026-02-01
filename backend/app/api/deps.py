@@ -1,15 +1,17 @@
 from fastapi import Depends, HTTPException, status, WebSocket
+import logging
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.database import get_db
-from app.core.security import verify_token, verify_appwrite_token
+from app.core.security import verify_token, verify_supabase_token
 from app.models.user import User
 from app.schemas.auth import TokenData
 
 # HTTP Bearer scheme for token authentication
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 
 async def get_current_user(
@@ -29,13 +31,15 @@ async def get_current_user(
         token = credentials.credentials
         token_data: Optional[TokenData] = verify_token(token)
         if token_data is None:
+            logger.warning("Token verification failed in get_current_user")
             raise credentials_exception
-    except Exception:
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_current_user: {e}")
         raise credentials_exception
     
     # Get user from database
     from sqlalchemy import select
-    result = await db.execute(select(User).where(User.appwrite_id == token_data.user_id))
+    result = await db.execute(select(User).where(User.auth_id == token_data.user_id))
     user = result.scalar_one_or_none()
     
     if user is None:
@@ -54,30 +58,31 @@ async def get_current_active_user(
     return current_user
 
 
-async def verify_appwrite_auth(
-    appwrite_token: str,
+async def verify_supabase_auth(
+    supabase_token: str,
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Verify Appwrite JWT token and return user (creates user if not exists)
+    Verify Supabase JWT token and return user (creates user if not exists)
     """
-    # Verify Appwrite token
-    user_data = await verify_appwrite_token(appwrite_token)
+    # Verify Supabase token
+    user_data = await verify_supabase_token(supabase_token)
     if user_data is None:
+        logger.warning("Supabase token verification failed in verify_supabase_auth")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Appwrite token"
+            detail="Invalid Supabase token"
         )
     
     # Check if user exists in our database
     from sqlalchemy import select
-    result = await db.execute(select(User).where(User.appwrite_id == user_data["user_id"]))
+    result = await db.execute(select(User).where(User.auth_id == user_data["user_id"]))
     user = result.scalar_one_or_none()
     
     # Create user if doesn't exist
     if user is None:
         user = User(
-            appwrite_id=user_data["user_id"],
+            auth_id=user_data["user_id"],
             email=user_data["email"],
             name=user_data["name"],
         )
@@ -126,20 +131,18 @@ async def get_current_user_ws(
         return None
     
     # Get user from database - we need to use the database from websocket state
-    # For WebSocket, we'll use the dependency injection pattern
+    # For WebSocket, we'll use the AsyncSessionLocal directly
     try:
-        from app.database import get_db
-        db = next(get_db())
-        
+        from app.database import AsyncSessionLocal
         from sqlalchemy import select
-        result = await db.execute(select(User).where(User.appwrite_id == token_data.user_id))
-        user = result.scalar_one_or_none()
         
-        await db.close()
-        
-        if user is None:
-            return None
-        
-        return user
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(User).where(User.auth_id == token_data.user_id))
+            user = result.scalar_one_or_none()
+            
+            if user is None:
+                return None
+            
+            return user
     except Exception:
         return None

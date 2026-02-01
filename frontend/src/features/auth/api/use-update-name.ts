@@ -1,39 +1,41 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-
-import { rpc } from "@/lib/rpc";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-type ResponseType = InferResponseType<typeof rpc.api.auth["update-name"]["$post"]>;
-type RequestType = InferRequestType<typeof rpc.api.auth["update-name"]["$post"]>;
+import { supabase } from "@/lib/supabase";
 
 export const useUpdateName = () => {
-    const queryClient = useQueryClient();
-
     const mutation = useMutation<
-        ResponseType,
+        { success: boolean; data?: any },
         Error,
-        RequestType
+        { name: string }
     >({
-        mutationFn: async ({json}) => {
-            const response = await rpc.api.auth["update-name"]["$post"]({json});
-
-            if (!response.ok) {
-                const error = await response.json() as { error?: string };
-                throw new Error(error.error || "Failed to update name");
+        mutationFn: async ({ name }) => {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError || !user) {
+                throw new Error("User not authenticated");
             }
 
-            return await response.json();
+            // Update user metadata with name
+            const { error: updateError } = await supabase.auth.updateUser({
+                data: {
+                    full_name: name
+                }
+            });
+
+            if (updateError) {
+                throw new Error("Failed to update name");
+            }
+
+            const updatedUser = await supabase.auth.getUser();
+            return { success: true, data: updatedUser };
         },
         onSuccess: () => {
             toast.success("Name updated successfully");
-            queryClient.invalidateQueries({ queryKey: ["current"] });
         },
         onError: (error) => {
             toast.error(error.message || "Failed to update name");
         }
-    })
+    });
 
     return mutation;
 };
-

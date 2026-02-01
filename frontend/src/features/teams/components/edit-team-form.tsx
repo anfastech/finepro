@@ -84,7 +84,7 @@ export const EditTeamForm = ({
 
     mutate(
       {
-        form: finalValues,
+        json: finalValues,
         param: { teamId: initialValues.$id },
       },
       {

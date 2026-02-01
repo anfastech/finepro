@@ -1,56 +1,43 @@
 import "server-only";
 
-import { 
-    Account,
-    Client,
-    Databases,
-    Models,
-    Storage,
-    type Account as AccountType,
-    type Databases as DatabasesType,
-    type Storage as StorageType,
-    type Users as UsersType,
-} from "node-appwrite"; 
-
-import { getCookie } from "hono/cookie";
+import { createClient } from '@supabase/supabase-js'
 import { createMiddleware } from "hono/factory";
-
-import { AUTH_COOKIE } from "@/features/auth/constants";
+import { getCookie } from "hono/cookie";
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from "@/config";
 
 type AdditionalContext = {
     Variables: {
-        account: AccountType;
-        database: DatabasesType;
-        storage: StorageType;
-        users: UsersType;
-        user: Models.User<Models.Preferences>;
+        user: any;
     }
 }
 
-
 export const sessionMiddleware = createMiddleware<AdditionalContext>(
     async (c, next) => {
-        const client = new Client()
-            .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-            .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
-
-        const session = getCookie(c, AUTH_COOKIE);
-
-        if (!session) {
+        const token = getCookie(c, "sb-access-token") || getCookie(c, "sb-refresh-token");
+        
+        if (!token) {
             return c.json({ error: "Unauthorized" }, 401);
         }
 
-        client.setSession(session);
+        // Create Supabase client with token
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+            auth: {
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+            },
+            global: {
+                headers: {
+                    cookie: c.req.header("cookie")
+                }
+            }
+        });
 
-        const account = new Account(client);
-        const database = new Databases(client);
-        const storage = new Storage(client);
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-        const user = await account.get();
+        if (error || !user) {
+            return c.json({ error: "Unauthorized" }, 401);
+        }
 
-        c.set("account", account);
-        c.set("database", database);
-        c.set("storage", storage);
         c.set("user", user);
 
         await next();

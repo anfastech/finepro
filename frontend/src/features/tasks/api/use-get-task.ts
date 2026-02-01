@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-
-import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { Task, TaskStatus } from "../types";
 
 // Helper to check if a valid status enum
@@ -18,9 +17,19 @@ export const useGetTask = ({
     const query = useQuery({
         queryKey: ["task", taskId],
         queryFn: async () => {
-            const task = await api.get<any>(`/tasks/${taskId}`);
+            const { data: task, error } = await supabase
+                .from('tasks')
+                .select(`
+                    *,
+                    project:projects(name),
+                    assigned_user:users(name, avatar_url)
+                `)
+                .eq('id', taskId)
+                .single();
 
-            if (!task) throw new Error("Task not found");
+            if (error || !task) {
+                throw new Error("Task not found");
+            }
 
             // Map to frontend format
             const data: Task = {
@@ -33,7 +42,7 @@ export const useGetTask = ({
 
                 name: task.title,
                 status: isValidStatus(task.status) ? task.status : TaskStatus.TODO,
-                workspaceId: "", // Backend task response doesn't always have workspace info directly, might need to fetch or infer
+                workspaceId: "", // Will be populated if needed
                 projectId: task.project_id || "",
                 assigneeId: task.assigned_to || "",
                 position: task.position || 0,
@@ -41,9 +50,22 @@ export const useGetTask = ({
                 description: task.description,
                 priority: task.priority,
 
-                project: { name: "Project" }, // Placeholder
-                assignee: { name: "Unassigned" } // Placeholder
-            } as unknown as Task;
+                project: task.project || { 
+    $id: "unknown",
+    $createdAt: "",
+    $updatedAt: "",
+    $collectionId: "projects",
+    $databaseId: "finepro",
+    $permissions: [],
+    name: "Unknown Project",
+    imageUrl: "",
+    workspaceId: ""
+},
+                assignee: task.assigned_user ? {
+                    name: task.assigned_user.name,
+                    avatarColor: task.assigned_user.avatar_color || { bg: "bg-gray-100", text: "text-gray-700" }
+                } : { name: "Unassigned" }
+            };
 
             return data;
         }

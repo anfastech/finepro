@@ -42,7 +42,7 @@ export const NamePromptModal = ({ open, onOpenChange }: NamePromptModalProps) =>
 
     const onSubmit = (data: z.infer<typeof updateNameSchema>) => {
         updateName(
-            { json: data },
+            { name: data.name },
             {
                 onSuccess: () => {
                     form.reset();

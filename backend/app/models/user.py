@@ -13,7 +13,7 @@ class User(Base):
     id = Column(String(12), primary_key=True, default=generate_user_id)
     email = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
-    auth_id = Column(String(255), unique=True, index=True, nullable=True)  # Supabase Auth user ID
+    supabase_id = Column(String(255), unique=True, index=True, nullable=True)  # Match DB column name
     avatar_url = Column(String(500), nullable=True)  # Avatar URL from OAuth provider
     role = Column(SQLEnum(UserRole), default=UserRole.DEVELOPER)
     skills = Column(JSON, default=dict)  # {"react": 9, "python": 7}

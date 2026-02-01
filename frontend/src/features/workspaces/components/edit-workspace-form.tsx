@@ -100,11 +100,12 @@ export const EditWorkspaceForm = ({
     const finalValues = {
       ...values,
       image: values.image instanceof File ? values.image : "",
+      name: values.name || initialValues.name, // Ensure name is always provided
     };
 
     mutate(
       {
-        form: finalValues,
+        json: finalValues,
         param: { workspaceId: initialValues.$id },
       },
     );

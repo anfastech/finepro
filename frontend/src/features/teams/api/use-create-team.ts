@@ -10,8 +10,8 @@ export const useCreateTeam = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation<ResponseType, Error, RequestType>({
-    mutationFn: async ({ form }) => {
-      const response = await rpc.api.teams.$post({ form });
+    mutationFn: async ({ json }) => {
+      const response = await rpc.api.teams.$post({ json });
 
       if (!response.ok) {
         throw new Error("Failed to create team");

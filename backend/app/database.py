@@ -41,5 +41,5 @@ async def init_db():
         # Import all models here to ensure they are registered
         from . import models
         
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+        # Create all tables only if they don't exist (checkfirst=True)
+        await conn.run_sync(Base.metadata.create_all, checkfirst=True)

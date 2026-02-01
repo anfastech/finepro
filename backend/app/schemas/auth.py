@@ -6,7 +6,7 @@ from .epic import EpicCreate, EpicUpdate, EpicResponse, EpicWithTasks
 from .task import TaskCreate, TaskUpdate, TaskResponse, TaskWithComments
 from .sprint import SprintCreate, SprintUpdate, SprintResponse, SprintWithTasks
 from .comment import CommentCreate, CommentUpdate, CommentResponse
-from .common import Token, TokenData, AppwriteTokenRequest, AppwriteTokenResponse, RefreshTokenRequest, CommonResponse, HealthCheck
+from .common import Token, TokenData, SupabaseTokenRequest, SupabaseTokenResponse, RefreshTokenRequest, CommonResponse, HealthCheck
 
 __all__ = [
     # User schemas
@@ -32,6 +32,6 @@ __all__ = [
     "CommentCreate", "CommentUpdate", "CommentResponse",
     
     # Common schemas
-    "Token", "TokenData", "AppwriteTokenRequest", "AppwriteTokenResponse", 
+    "Token", "TokenData", "SupabaseTokenRequest", "SupabaseTokenResponse", 
     "RefreshTokenRequest", "CommonResponse", "HealthCheck"
 ]

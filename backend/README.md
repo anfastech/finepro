@@ -8,7 +8,7 @@ Phase 1 backend implementation for FinePro AI - AI-powered project management pl
 - **FastAPI Application**: Modern async API framework with CORS support
 - **PostgreSQL Integration**: Async SQLAlchemy 2.0 with asyncpg driver
 - **Database Models**: Complete SQLAlchemy models for Users, Workspaces, Projects, Epics, Tasks, Sprints, Comments, Activity Logs
-- **Authentication System**: JWT token management with Appwrite integration
+- **Authentication System**: JWT token management with Supabase integration
 - **API Endpoints**:
   - Authentication: `/api/v1/auth/verify`, `/api/v1/auth/exchange`, `/api/v1/auth/refresh`, `/api/v1/auth/me`
   - Workspaces: Basic CRUD operations (GET, POST, PATCH, DELETE)
@@ -59,10 +59,13 @@ nano .env
 Create a `.env` file from `.env.example`:
 
 ```bash
-# Appwrite Configuration
-appwrite_endpoint=https://cloud.appwrite.io/v1
-appwrite_project_id=your_project_id
-appwrite_key=your_appwrite_server_key
+# Supabase Configuration
+# Supabase CLI Configuration
+SUPABASE_ACCESS_TOKEN=your_supabase_access_token
+SUPABASE_PROJECT_REF=your_project_ref
+# Supabase API keys/secrets (used by CLI and backend if needed)
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ANON_KEY=your_anon_key
 
 # PostgreSQL Database
 DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/finepro
@@ -138,8 +141,8 @@ pytest --cov=app --cov-report=html
 ## API Endpoints
 
 ### Authentication
-- `POST /api/v1/auth/verify` - Verify Appwrite JWT
-- `POST /api/v1/auth/exchange` - Exchange Appwrite token for FastAPI tokens
+- `POST /api/v1/auth/verify` - Verify Supabase JWT
+- `POST /api/v1/auth/exchange` - Exchange Supabase token for FastAPI tokens
 - `POST /api/v1/auth/refresh` - Refresh access token
 - `GET /api/v1/auth/me` - Get current user info
 - `POST /api/v1/auth/logout` - Logout user
@@ -157,7 +160,7 @@ pytest --cov=app --cov-report=html
 
 ## Authentication Flow
 
-1. **Appwrite Token Verification**: Frontend sends Appwrite JWT to `/api/v1/auth/verify`
+1. **Supabase Token Verification**: Frontend sends Supabase JWT to `/api/v1/auth/verify`
 2. **Token Exchange**: Verify token → Create/get user → Generate FastAPI tokens
 3. **Access Token**: Use FastAPI JWT in `Authorization: Bearer {token}` header
 4. **Token Refresh**: Use refresh token to get new access token
@@ -165,7 +168,7 @@ pytest --cov=app --cov-report=html
 ## Database Schema
 
 ### Core Models
-- **User**: User accounts with Appwrite integration
+- **User**: User accounts with Supabase integration
 - **Workspace**: Project workspaces with member management
 - **Project**: Individual projects within workspaces
 - **Epic**: Large features within projects
@@ -186,7 +189,7 @@ pytest --cov=app --cov-report=html
 
 ### Security
 - JWT tokens with configurable expiration
-- Appwrite JWT verification
+- Supabase JWT verification
 - Password hashing with bcrypt
 - CORS configuration
 - Input validation and sanitization

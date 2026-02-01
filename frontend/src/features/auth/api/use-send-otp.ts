@@ -1,53 +1,29 @@
 import { useMutation } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-
-import { rpc } from "@/lib/rpc";
 import { toast } from "sonner";
-
-type ResponseType = InferResponseType<typeof rpc.api.auth["send-otp"]["$post"]>;
-type RequestType = InferRequestType<typeof rpc.api.auth["send-otp"]["$post"]>;
+import { supabase } from "@/lib/supabase";
 
 export const useSendOtp = () => {
     const mutation = useMutation<
-        ResponseType,
+        { success: boolean; userId?: string },
         Error,
-        RequestType
+        { email: string }
     >({
-        mutationFn: async ({json}) => {
-            const response = await rpc.api.auth["send-otp"]["$post"]({json});
+        mutationFn: async ({ email }) => {
+            const { data, error } = await supabase.auth.resetPasswordForEmail(email);
 
-            if (!response.ok) {
-                let errorMessage = "Failed to send OTP";
-                try {
-                    const errorData = await response.json() as { 
-                        error?: string; 
-                        message?: string;
-                        success?: boolean;
-                    };
-                    
-                    // Check for validation errors from zValidator
-                    if (errorData.error) {
-                        errorMessage = errorData.error;
-                    } else if (errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch {
-                    // If JSON parsing fails, use status text
-                    errorMessage = response.statusText || "Failed to send OTP";
-                }
-                throw new Error(errorMessage);
+            if (error) {
+                throw new Error(error.message);
             }
 
-            return await response.json() as { success: true; userId: string };
+            return { success: true };
         },
         onSuccess: () => {
-            toast.success("OTP sent to your email");
+            toast.success("Password reset link sent to your email");
         },
         onError: (error) => {
-            toast.error(error.message || "Failed to send OTP");
+            toast.error(error.message || "Failed to send password reset link");
         }
-    })
+    });
 
     return mutation;
 };
-

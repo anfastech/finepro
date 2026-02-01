@@ -26,8 +26,8 @@ class WorkspaceService:
         res = await self.db.execute(q)
         return res.scalar_one_or_none()
 
-    async def create(self, owner_id: UUID, name: str, appwrite_id: Optional[str] = None) -> Workspace:
-        ws = Workspace(name=name, owner_id=owner_id, appwrite_id=appwrite_id)
+    async def create(self, owner_id: UUID, name: str, supabase_id: Optional[str] = None) -> Workspace:
+        ws = Workspace(name=name, owner_id=owner_id, supabase_id=supabase_id)
         self.db.add(ws)
         await self.db.commit()
         await self.db.refresh(ws)

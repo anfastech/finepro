@@ -71,7 +71,7 @@ export const Navbar = () => {
                 </div>
 
                 <div className="hidden lg:flex items-center gap-2 -space-x-2">
-                    {displayMembers.map((member) => (
+                    {displayMembers.map((member: any) => (
                         <div key={member.$id} className="size-8 -ml-3 rounded-full border-2 border-white overflow">
                             <MemberAvatar
                                 className="size-8"

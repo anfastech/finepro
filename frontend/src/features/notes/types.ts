@@ -1,6 +1,6 @@
-import { Models } from "node-appwrite";
+import { DatabaseDocument } from "@/lib/database";
 
-export type Note = Models.Document & {
+export type Note = DatabaseDocument & {
   title: string;
   content: string;
   workspaceId: string;

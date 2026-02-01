@@ -78,12 +78,13 @@ export const EditProjectForm = ({
   });
 
   const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
-    const finalValues = {
+const finalValues = {
       ...values,
       image: values.image instanceof File ? values.image : "",
+      name: values.name || "",
     };
 
-    mutate(
+mutate(
       {
         form: finalValues,
         param: { projectId: initialValues.$id },

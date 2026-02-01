@@ -16,7 +16,7 @@ export const OnboardingFlow = () => {
     // If user has a name, skip profile step
     // Always show workspace step if no workspaces exist
     const needsPassword = true; // OAuth users need to set password
-    const needsProfile = !user?.name || user.name.trim() === "";
+    const needsProfile = !user?.user_metadata?.full_name || user?.user_metadata?.full_name.trim() === "";
     const needsWorkspace = true; // Always need at least one workspace
 
     const [step, setStep] = useState<OnboardingStep>("password");

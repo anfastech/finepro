@@ -3,6 +3,9 @@ from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.schemas.auth import TokenData
@@ -60,54 +63,52 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-async def verify_appwrite_token(token: str) -> Optional[Dict[str, Any]]:
+async def verify_supabase_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Verify Appwrite JWT token by calling Appwrite API GET /account
+    Verify Supabase JWT token by calling Supabase Auth API
     Returns user data if valid, None if invalid
     """
     try:
-        # Appwrite Get Account endpoint
-        url = f"{settings.appwrite_endpoint}/account"
+        # Supabase Get User endpoint using the token
+        url = f"{settings.supabase_url}/auth/v1/user"
         headers = {
-            "X-Appwrite-Project": settings.appwrite_project_id,
-            "X-Appwrite-JWT": token,
+            "Authorization": f"Bearer {token}",
+            "apikey": settings.supabase_service_role_key,
             "Content-Type": "application/json"
         }
         
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                headers=headers
-            )
+            response = await client.get(url, headers=headers)
             
             if response.status_code == 200:
                 data = response.json()
+                logger.debug(f"Supabase verification successful for user: {data.get('email')}")
                 # Extract user information
                 user_data = {
-                    "user_id": data.get("$id"),
+                    "user_id": data.get("id"),
                     "email": data.get("email"),
-                    "name": data.get("name"),
-                    "avatar_url": data.get("prefs", {}).get("avatar_url"),
+                    "name": data.get("user_metadata", {}).get("full_name") or data.get("user_metadata", {}).get("name"),
+                    "avatar_url": data.get("user_metadata", {}).get("avatar_url"),
                 }
                 return user_data
             else:
-                print(f"Appwrite verification failed: {response.status_code} - {response.text}")
+                logger.error(f"Supabase verification failed: {response.status_code} - {response.text}")
                 return None
                 
     except Exception as e:
-        print(f"Error verifying Appwrite token: {e}")
+        logger.exception(f"Error verifying Supabase token: {e}")
         return None
 
 
-async def get_appwrite_user(user_id: str) -> Optional[Dict[str, Any]]:
+async def get_supabase_user(user_id: str) -> Optional[Dict[str, Any]]:
     """
-    Get user information from Appwrite API
+    Get user information from Supabase Admin API
     """
     try:
-        url = f"{settings.appwrite_endpoint}/users/{user_id}"
+        url = f"{settings.supabase_url}/auth/v1/admin/users/{user_id}"
         headers = {
-            "X-Appwrite-Project": settings.appwrite_project_id,
-            "X-Appwrite-Key": settings.appwrite_key,
+            "Authorization": f"Bearer {settings.supabase_service_role_key}",
+            "apikey": settings.supabase_service_role_key,
         }
         
         async with httpx.AsyncClient() as client:
@@ -116,13 +117,14 @@ async def get_appwrite_user(user_id: str) -> Optional[Dict[str, Any]]:
             if response.status_code == 200:
                 data = response.json()
                 return {
-                    "user_id": str(data.get("$id", "")),
+                    "user_id": str(data.get("id", "")),
                     "email": str(data.get("email", "")),
-                    "name": str(data.get("name", "")),
+                    "name": str(data.get("user_metadata", {}).get("full_name", "")),
                 }
             else:
+                logger.error(f"Failed to get Supabase user {user_id}: {response.status_code} - {response.text}")
                 return None
                 
     except Exception as e:
-        print(f"Error getting Appwrite user: {e}")
+        logger.exception(f"Error getting Supabase user: {e}")
         return None

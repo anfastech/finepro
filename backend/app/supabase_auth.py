@@ -1,4 +1,5 @@
 import secrets
+import logging
 from typing import Optional
 from jose import jwt, JWTError
 from fastapi import HTTPException, status, Depends
@@ -9,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 # Supabase Configuration
 from app.config import settings
@@ -33,6 +35,7 @@ async def get_current_user(
         token = credentials.credentials
         
         if not SUPABASE_JWT_SECRET:
+            logger.error("SUPABASE_JWT_SECRET is not configured")
             raise credentials_exception
             
         # Decode JWT token
@@ -54,11 +57,15 @@ async def get_current_user(
         if email is None:
             raise credentials_exception
             
-    except JWTError:
+    except JWTError as e:
+        logger.warning(f"JWT validation failed: {str(e)}")
         raise credentials_exception
     
     # Get user from database or create if doesn't exist
     user = db.query(User).filter(User.auth_id == user_id).first()
+    
+    if user:
+        logger.debug(f"User {user.email} found in database (Supabase flow)")
     
     if not user:
         # Create user if doesn't exist (first login)

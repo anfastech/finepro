@@ -32,10 +32,10 @@ export const EditTaskFormWrapper = ({
         imageUrl: project.imageUrl
     }));
 
-    const memberOptions = members?.documents.map((member) => ({
-        id: member.$id,
+    const memberOptions = members?.documents.map((member: any) => ({
+        id: member.$id || member.id,
         name: member.name || member.email || '',
-        avatarColor: member.avatarColor,
+        avatarColor: member.avatarColor || member.avatar_color,
     }));
 
     const loading = isLoading || isLoadingProjects || isLoadingMembers;

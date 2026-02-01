@@ -31,8 +31,10 @@ export const useRegister = () => {
         },
         onSuccess: () => {
             toast.success("Registered successfully");
-            router.refresh();
+            // Invalidate current user query to force refetch
             queryClient.invalidateQueries({ queryKey: ["current"] });
+            // Redirect to dashboard to get fresh session
+            router.push("/");
         },
         onError: (error) => {
             toast.error(error.message || "Failed to register");

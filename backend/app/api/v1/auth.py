@@ -1,93 +1,101 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
+import httpx
+import logging
 
-from app.database import get_db
-from app.core.security import create_access_token, create_refresh_token, verify_appwrite_token
-from app.models.user import User
+logger = logging.getLogger(__name__)
 from app.schemas.auth import (
-    Token, AppwriteTokenRequest, AppwriteTokenResponse, 
-    RefreshTokenRequest, CommonResponse
+    Token, 
+    SupabaseTokenRequest, 
+    SupabaseTokenResponse, 
+    RefreshTokenRequest, 
+    CommonResponse
 )
 from app.config import settings
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.user import User
 from app.api.deps import get_current_user
+from app.database import get_db
+
 
 router = APIRouter()
 
 
-@router.post("/verify", response_model=AppwriteTokenResponse, status_code=200)
-async def verify_appwrite_jwt(
-    request: AppwriteTokenRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Verify Appwrite JWT token and get user information
-    """
-    user_data = await verify_appwrite_token(request.appwrite_token)
-    if user_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Appwrite token"
-        )
+async def verify_supabase_jwt(token: str) -> dict:
+    """Verify Supabase JWT and return user data"""
+    url = f"{settings.supabase_url}/auth/v1/user"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "apikey": settings.supabase_anon_key,
+    }
     
-    return AppwriteTokenResponse(
-        user_id=user_data["user_id"],
-        email=user_data["email"],
-        name=user_data["name"],
-        message="Appwrite token verified successfully"
-    )
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        
+        if response.status_code != 200:
+            return None
+        
+        data = response.json()
+        return {
+            "user_id": data.get("id"),
+            "email": data.get("email"),
+            "name": data.get("user_metadata", {}).get("full_name") or data.get("user_metadata", {}).get("name", ""),
+            "avatar_url": data.get("user_metadata", {}).get("avatar_url")
+        }
 
 
 @router.post("/exchange", response_model=Token, status_code=200)
-async def exchange_appwrite_token(
-    request: AppwriteTokenRequest,
+async def exchange_supabase_token(
+    request: SupabaseTokenRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Exchange Appwrite JWT for FastAPI access/refresh tokens
-    """
-    # Verify Appwrite token
-    user_data = await verify_appwrite_token(request.appwrite_token)
+    """Exchange Supabase JWT for FastAPI tokens"""
+    logger.info(f"Exchanging Supabase token for user data")
+    user_data = await verify_supabase_jwt(request.supabase_token)
+    
     if user_data is None:
+        logger.warning("Supabase token exchange failed: Invalid token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Appwrite token"
+            detail="Invalid Supabase token"
         )
     
     # Check if user exists in our database
-    from sqlalchemy import select
-    
-    # Check if user exists by appwrite_id first
-    result = await db.execute(select(User).where(User.appwrite_id == user_data["user_id"]))
+    result = await db.execute(select(User).where(User.supabase_id == user_data["user_id"]))
     user = result.scalar_one_or_none()
     
-    # If user doesn't exist by appwrite_id, check by email (in case of account switch)
+    if user:
+        logger.debug(f"User {user.email} found in database")
+    
+    # Create user if doesn't exist
     if user is None:
         result = await db.execute(select(User).where(User.email == user_data["email"]))
         existing_user = result.scalar_one_or_none()
         
         if existing_user:
-            # Update the existing user's appwrite_id
-            existing_user.appwrite_id = user_data["user_id"]
-            existing_user.name = user_data["name"]  # Update name in case it changed
+            existing_user.supabase_id = user_data["user_id"]
+            existing_user.name = user_data["name"]
             existing_user.avatar_url = user_data.get("avatar_url")
             user = existing_user
             await db.commit()
             await db.refresh(user)
         else:
-            # Create new user
             user = User(
-                appwrite_id=user_data["user_id"],
+                supabase_id=user_data["user_id"],
                 email=user_data["email"],
                 name=user_data["name"],
                 avatar_url=user_data.get("avatar_url"),
             )
+            logger.info(f"Creating new user in database: {user.email}")
             db.add(user)
             await db.commit()
             await db.refresh(user)
     
-    # Create FastAPI tokens
+    logger.info(f"User {user.email} authenticated successfully")
+    
+    # Create tokens
+    from app.core.security import create_access_token, create_refresh_token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_data["user_id"], "email": user.email},
@@ -105,39 +113,57 @@ async def exchange_appwrite_token(
     )
 
 
+@router.post("/verify", response_model=SupabaseTokenResponse, status_code=200)
+async def verify_supabase_token(
+    request: SupabaseTokenRequest
+):
+    """Verify Supabase JWT token"""
+    logger.info("Verifying Supabase token")
+    user_data = await verify_supabase_jwt(request.supabase_token)
+    
+    if user_data is None:
+        logger.warning("Supabase token verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Supabase token"
+        )
+    
+    return SupabaseTokenResponse(
+        user_id=user_data["user_id"],
+        email=user_data["email"],
+        name=user_data["name"],
+        message="Supabase token verified successfully"
+    )
+
+
 @router.post("/refresh", response_model=Token, status_code=200)
 async def refresh_access_token(
     request: RefreshTokenRequest
 ):
-    """
-    Refresh access token using refresh token
-    """
-    from app.core.security import verify_token
-    from fastapi import HTTPException, status
+    """Refresh access token"""
+    logger.info("Refreshing access token")
+    from app.core.security import verify_token, create_access_token, create_refresh_token
     
-    # Verify refresh token
     token_data = verify_token(request.refresh_token)
     if token_data is None:
+        logger.warning("Token refresh failed: Invalid refresh token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
     
-    # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": token_data.user_id, "email": token_data.email},
         expires_delta=access_token_expires
     )
-    
-    # Create new refresh token (token rotation)
-    new_refresh_token = create_refresh_token(
+    refresh_token = create_refresh_token(
         data={"sub": token_data.user_id, "email": token_data.email}
     )
     
     return Token(
         access_token=access_token,
-        refresh_token=new_refresh_token,
+        refresh_token=refresh_token,
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
@@ -147,27 +173,19 @@ async def refresh_access_token(
 async def get_current_user_info(
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get current authenticated user information
-    """
+    """Get current authenticated user"""
     return {
-        "status": "success",
-        "data": {
-            "$id": current_user.appwrite_id,
-            "id": str(current_user.id),
-            "email": current_user.email,
-            "name": current_user.name,
-            "avatar_url": current_user.avatar_url
-        }
+        "id": current_user.supabase_id,
+        "uuid": str(current_user.id),
+        "email": current_user.email,
+        "name": current_user.name,
+        "avatar_url": current_user.avatar_url,
     }
 
 
 @router.post("/logout", response_model=CommonResponse)
 async def logout_user():
-    """
-    Logout user (token invalidation would need Redis/blacklist implementation)
-    For now, this is just a placeholder that clients can call
-    """
+    """Logout user"""
     return CommonResponse(
         success=True,
         message="User logged out successfully"

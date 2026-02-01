@@ -140,8 +140,6 @@ supabase/.temp/
 supabase/config.toml
 supabase/functions/
 supabase/branches/
-appwrite/
-.appwrite/
 serviceAccount.json
 firebase-adminsdk*.json
 google-credentials.json
@@ -149,6 +147,10 @@ aws-credentials.json
 *.p8
 *.p12
 *.key
+
+#old-backend-files
+appwrite/
+.appwrite/
 
 ########################
 # Build and deployment

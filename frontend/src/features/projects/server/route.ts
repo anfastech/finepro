@@ -1,13 +1,8 @@
 import z from "zod";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
-
-import { getMember } from "@/features/members/utils";
-
-import { DATABASE_ID, IMAGE_BUCKET_ID, PROJECTS_ID, TASKS_ID } from "@/config";
-import { sessionMiddleware } from "@/lib/session-middleware";
+import { createSupabaseClient } from "@/lib/supabase-server";
 import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
 import { TaskStatus } from "@/features/tasks/types";
@@ -15,68 +10,58 @@ import { TaskStatus } from "@/features/tasks/types";
 const app = new Hono()
     .post(
         "/",
-        sessionMiddleware,
-        zValidator("form", createProjectSchema),
+        zValidator("json", createProjectSchema), // Changed from form to json for simplicity
         async (c) => {
-            const databases = c.get("database");
-            const storage = c.get("storage");
-            const user = c.get("user");
-      
+            const supabase = await createSupabaseClient();
+            
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
+
             // Extract validated form data
-            const { name, image, workspaceId, teamId } = c.req.valid("form");
+            const { name, workspaceId, teamId } = c.req.valid("json");
 
-            const member = await getMember({
-                databases,
-                workspaceId,
-                userId: user.$id
-            });
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', workspaceId)
+                .eq('user_id', user.id)
+                .single();
 
-            if (!member) {
-                return c.json({ error: "Unathorized"}, 401);
+            if (memberError || !member) {
+                return c.json({ error: "Unauthorized" }, 401);
             }
-      
-            let uploadedImageUrl: string | undefined;
-      
-            // If user uploaded an image file
-            if (image instanceof File) {
-              // Upload the file to Appwrite storage bucket
-              const file = await storage.createFile(
-                IMAGE_BUCKET_ID,
-                ID.unique(), // Generate unique file ID
-                image
-              );
-      
-              // Create a URL that points to our file serving endpoint
-              // This URL will work because it goes through our authenticated API
-              uploadedImageUrl = `/api/workspaces/file/${file.$id}`;
+
+            // Create project document in database
+            const { data: project, error: createError } = await supabase
+                .from('projects')
+                .insert({
+                    name,
+                    image_url: null, // TODO: Implement image upload with Supabase Storage
+                    workspace_id: workspaceId,
+                    team_id: teamId || null,
+                })
+                .select()
+                .single();
+
+            if (createError) {
+                return c.json({ error: createError.message }, 500);
             }
-      
-            // Create the project document in the database
-            const project = await databases.createDocument(
-              DATABASE_ID,
-              PROJECTS_ID,
-              ID.unique(), // Generate unique workspace ID
-              {
-                name,
-                imageUrl: uploadedImageUrl, // Store the file URL or undefined if no image
-                workspaceId,
-                teamId: teamId || undefined,
-              }
-            );
-      
-            // Return the created project data
+
+            // Return created project data
             return c.json({
-              data: project,
+                data: project,
             });
-          }
+        }
     )
     .get(
         "/",
-        sessionMiddleware,
         zValidator("query", z.object({ workspaceId: z.string(), teamId: z.string().nullish() })),
         async (c) => {
-            const user = c.get("user");
-            const databases = c.get("database");
+            const supabase = await createSupabaseClient();
 
             const { workspaceId, teamId } = c.req.valid("query");
 
@@ -86,340 +71,361 @@ const app = new Hono()
                 }, 400);
             }
 
-            const member = await getMember({
-                databases,
-                workspaceId,
-                userId: user.$id,
-            });
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-            if (!member) {
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', workspaceId)
+                .eq('user_id', user.id)
+                .single();
+
+            if (memberError || !member) {
                 return c.json({
                     error: "Unauthorized",
                 }, 401);
             }
 
-            const query = [
-                Query.equal("workspaceId", workspaceId),
-                Query.orderDesc("$createdAt"),
-            ];
+            let query = supabase
+                .from('projects')
+                .select('*')
+                .eq('workspace_id', workspaceId)
+                .order('created_at', { ascending: false });
 
             if (teamId) {
-                query.push(Query.equal("teamId", teamId));
+                query = query.eq('team_id', teamId);
             }
 
-            const projects = await databases.listDocuments<Project>(
-                DATABASE_ID,
-                PROJECTS_ID,
-                query
-            );
+            const { data: projects, error: projectsError } = await query;
 
+            if (projectsError) {
+                return c.json({ error: projectsError.message }, 500);
+            }
 
-            return c.json({ data: projects });
+            return c.json({ 
+                data: {
+                    documents: projects || [],
+                    total: projects?.length || 0,
+                }
+            });
         }
     )
     .get(
-      "/:projectId",
-      sessionMiddleware,
-      async (c) => {
-        const user = c.get("user");
-        const databases = c.get("database");
-        const { projectId } = c.req.param();
+        "/:projectId",
+        async (c) => {
+            const supabase = await createSupabaseClient();
+            const { projectId } = c.req.param();
 
-        const project = await databases.getDocument<Project>(
-          DATABASE_ID,
-          PROJECTS_ID,
-          projectId
-        );
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-        const member = await getMember({
-          databases,
-          workspaceId: project.workspaceId,
-          userId: user.$id,
-        });
+            // Get project
+            const { data: project, error: projectError } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
 
-        if (!member) {
-          return c.json({ error: "Unauthorized" }, 401);
+            if (projectError || !project) {
+                return c.json({ error: "Project not found" }, 404);
+            }
+
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', project.workspace_id)
+                .eq('user_id', user.id)
+                .single();
+
+            if (memberError || !member) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
+
+            return c.json({ data: project });
         }
-
-        return c.json({ data: project });
-      }
     )
     .patch(
-    "/:projectId",
-    sessionMiddleware,
-    zValidator("form", updateProjectSchema),
-    async (c) => {
-      const databases = c.get("database");
-      const storage = c.get("storage");
-      const user = c.get("user");
+        "/:projectId",
+        zValidator("json", updateProjectSchema),
+        async (c) => {
+            const supabase = await createSupabaseClient();
 
-      const { projectId } = c.req.param();
-      const { name, image, teamId } = c.req.valid("form");
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-      const existingProject = await databases.getDocument<Project>(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId,
-      );
+            const { projectId } = c.req.param();
+            const { name, teamId } = c.req.valid("json");
 
-      const member = await getMember({
-        databases,
-        workspaceId: existingProject.workspaceId,
-        userId: user.$id,
-      });
+            // Get existing project
+            const { data: existingProject, error: projectError } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
 
-      if (!member) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
+            if (projectError || !existingProject) {
+                return c.json({ error: "Project not found" }, 404);
+            }
 
-      let uploadedImageUrl: string | undefined;
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', existingProject.workspace_id)
+                .eq('user_id', user.id)
+                .single();
 
-      // If user uploaded an image file
-      if (image instanceof File) {
-        // Upload the file to Appwrite storage bucket
-        const file = await storage.createFile(
-          IMAGE_BUCKET_ID,
-          ID.unique(), // Generate unique file ID
-          image
-        );
+            if (memberError || !member) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-        // Create a URL that points to our file serving endpoint
-        // This URL will work because it goes through our authenticated API
-        uploadedImageUrl = `/api/workspaces/file/${file.$id}`;
-      } else {
-        uploadedImageUrl = image;
-      }
+            const updateData: Record<string, unknown> = {
+                name,
+                updated_at: new Date().toISOString(),
+            };
+            
+            if (teamId !== undefined) {
+                updateData.team_id = teamId || null;
+            }
 
-      const updateData: Record<string, unknown> = {
-        name,
-        imageUrl: uploadedImageUrl,
-      };
-      
-      if (teamId !== undefined) {
-        updateData.teamId = teamId || undefined;
-      }
+            // Update project
+            const { data: project, error: updateError } = await supabase
+                .from('projects')
+                .update(updateData)
+                .eq('id', projectId)
+                .select()
+                .single();
 
-      const project = await databases.updateDocument(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId,
-        updateData
-      )
+            if (updateError) {
+                return c.json({ error: updateError.message }, 500);
+            }
 
-      return c.json({
-        data: project
-      });
-    }
+            return c.json({
+                data: project
+            });
+        }
     )
     .delete(
-      "/:projectId",
-    sessionMiddleware, 
-    async (c) => {
-     // wanna change database to databases, but why? find it out
-     const databases = c.get("database");
-     const user = c.get("user");
+        "/:projectId",
+        async (c) => {
+            const supabase = await createSupabaseClient();
 
-     const { projectId } = c.req.param();
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-     const existingProject = await databases.getDocument<Project>(
-      DATABASE_ID,
-      PROJECTS_ID,
-      projectId,
-    );
+            const { projectId } = c.req.param();
 
-     const member = await getMember({
-       databases,
-       workspaceId: existingProject.workspaceId,
-       userId: user.$id,
-     });
+            // Get existing project
+            const { data: existingProject, error: projectError } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
 
-     if (!member) {
-       return c.json({ error: "Unauthorized" }, 401);
-     }
+            if (projectError || !existingProject) {
+                return c.json({ error: "Project not found" }, 404);
+            }
 
-     // TODO: delete tasks, etc.
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', existingProject.workspace_id)
+                .eq('user_id', user.id)
+                .single();
 
-     await databases.deleteDocument(
-       DATABASE_ID,
-       PROJECTS_ID,
-       projectId
-     );
+            if (memberError || !member) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-     return c.json({ data: { $id: existingProject.$id } });  
-    }
+            // TODO: delete tasks, etc.
+
+            // Delete project
+            const { error: deleteError } = await supabase
+                .from('projects')
+                .delete()
+                .eq('id', projectId);
+
+            if (deleteError) {
+                return c.json({ error: deleteError.message }, 500);
+            }
+
+            return c.json({ data: { id: existingProject.id } });  
+        }
     )
     .get(
-      "/:projectId/analytics",
-      sessionMiddleware,
-      async (c) => {
-        const databases = c.get("database");
-        const user = c.get("user");
-        const { projectId } = c.req.param();
+        "/:projectId/analytics",
+        async (c) => {
+            const supabase = await createSupabaseClient();
 
-        const project = await databases.getDocument<Project>(
-          DATABASE_ID,
-          PROJECTS_ID,
-          projectId
-        );
+            // Get current user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
 
-        const member = await getMember({
-          databases,
-          workspaceId: project.workspaceId,
-          userId: user.$id,
-        });
+            const { projectId } = c.req.param();
 
-        if (!member) {
-          return c.json({ error: "Unauthorized" }, 401);
+            // Get project
+            const { data: project, error: projectError } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single();
+
+            if (projectError || !project) {
+                return c.json({ error: "Project not found" }, 404);
+            }
+
+            // Check if user is a member of this workspace
+            const { data: member, error: memberError } = await supabase
+                .from('members')
+                .select('*')
+                .eq('workspace_id', project.workspace_id)
+                .eq('user_id', user.id)
+                .single();
+
+            if (memberError || !member) {
+                return c.json({ error: "Unauthorized" }, 401);
+            }
+
+            const now = new Date();
+            const thisMonthStart = startOfMonth(now);
+            const thisMonthEnd = endOfMonth(now);
+            const lastMonthStart = startOfMonth(subMonths(now, 1));
+            const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
+            // This month tasks
+            const { data: thisMonthTasks, error: thisMonthError } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .gte('created_at', thisMonthStart.toISOString())
+                .lte('created_at', thisMonthEnd.toISOString());
+
+            // Last month tasks
+            const { data: lastMonthTasks, error: lastMonthError } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .gte('created_at', lastMonthStart.toISOString())
+                .lte('created_at', lastMonthEnd.toISOString());
+
+            const taskCount = thisMonthTasks?.length || 0;
+            const taskDifference = taskCount - (lastMonthTasks?.length || 0);
+
+            // This month assigned tasks
+            const { data: thisMonthAssignedTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .eq('assignee_id', member.id)
+                .gte('created_at', thisMonthStart.toISOString())
+                .lte('created_at', thisMonthEnd.toISOString());
+
+            const { data: lastMonthAssignedTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .eq('assignee_id', member.id)
+                .gte('created_at', lastMonthStart.toISOString())
+                .lte('created_at', lastMonthEnd.toISOString());
+
+            const assignedTaskCount = thisMonthAssignedTasks?.length || 0;
+            const assignedTaskDifference = assignedTaskCount - (lastMonthAssignedTasks?.length || 0);
+
+            // This month incomplete tasks
+            const { data: thisMonthIncompleteTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .neq('status', TaskStatus.DONE)
+                .gte('created_at', thisMonthStart.toISOString())
+                .lte('created_at', thisMonthEnd.toISOString());
+
+            const { data: lastMonthIncompleteTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .neq('status', TaskStatus.DONE)
+                .gte('created_at', lastMonthStart.toISOString())
+                .lte('created_at', lastMonthEnd.toISOString());
+
+            const incompleteTaskCount = thisMonthIncompleteTasks?.length || 0;
+            const incompleteTaskDifference = incompleteTaskCount - (lastMonthIncompleteTasks?.length || 0);
+
+            // This month completed tasks
+            const { data: thisMonthCompletedTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .eq('status', TaskStatus.DONE)
+                .gte('created_at', thisMonthStart.toISOString())
+                .lte('created_at', thisMonthEnd.toISOString());
+
+            const { data: lastMonthCompletedTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .eq('status', TaskStatus.DONE)
+                .gte('created_at', lastMonthStart.toISOString())
+                .lte('created_at', lastMonthEnd.toISOString());
+
+            const completedTaskCount = thisMonthCompletedTasks?.length || 0;
+            const completedTaskDifference = completedTaskCount - (lastMonthCompletedTasks?.length || 0);
+
+            // This month overdue tasks
+            const { data: thisMonthOverdueTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .neq('status', TaskStatus.DONE)
+                .lt('due_date', now.toISOString())
+                .gte('created_at', thisMonthStart.toISOString())
+                .lte('created_at', thisMonthEnd.toISOString());
+
+            const { data: lastMonthOverdueTasks } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', projectId)
+                .neq('status', TaskStatus.DONE)
+                .lt('due_date', now.toISOString())
+                .gte('created_at', lastMonthStart.toISOString())
+                .lte('created_at', lastMonthEnd.toISOString());
+
+            const overdueTaskCount = thisMonthOverdueTasks?.length || 0;
+            const overdueTaskDifference = overdueTaskCount - (lastMonthOverdueTasks?.length || 0);
+
+            return c.json({
+                data: {
+                    taskCount,
+                    taskDifference,
+                    assignedTaskCount,
+                    assignedTaskDifference,
+                    completedTaskCount,
+                    completedTaskDifference,
+                    incompleteTaskCount,
+                    incompleteTaskDifference,
+                    overdueTaskCount,
+                    overdueTaskDifference,
+                }
+            });
         }
-
-        const now = new Date();
-        const thisMonthStart = startOfMonth(now);
-        const thisMonthEnd = endOfMonth(now);
-        const lastMonthStart = startOfMonth(subMonths(now, 1));
-        const lastMonthEnd = endOfMonth(subMonths(now, 1));
-
-        const thisMonthTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-          ]
-        );
-
-        const lastMonthTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-          ]
-        );
-
-        const taskCount = thisMonthTasks.total;
-        const taskDifference = taskCount - lastMonthTasks.total;
-
-        const thisMonthAssignedTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.equal("assigneeId", member.$id),
-            Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-          ]
-        );
-
-        const lastMonthAssignedTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.equal("assigneeId", member.$id),
-            Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-          ]
-        );
-
-        const assignedTaskCount = thisMonthAssignedTasks.total;
-        const assignedTaskDifference = assignedTaskCount - lastMonthAssignedTasks.total;
-
-        const thisMonthIncompleteTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.notEqual("status", TaskStatus.DONE),
-            Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-          ]
-        );
-
-        const lastMonthIncompleteTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.notEqual("status", TaskStatus.DONE),
-            Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-          ]
-        );
-
-        const incompleteTaskCount = thisMonthIncompleteTasks.total;
-        const incompleteTaskDifference = incompleteTaskCount - lastMonthIncompleteTasks.total;
-
-        const thisMonthCompletedTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.equal("status", TaskStatus.DONE),
-            Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-          ]
-        );
-
-        const lastMonthCompletedTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.equal("status", TaskStatus.DONE),
-            Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-          ]
-        );
-
-        const completedTaskCount = thisMonthCompletedTasks.total;
-        const completedTaskDifference = completedTaskCount - lastMonthCompletedTasks.total;
-
-        const thisMonthOverdueTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.notEqual("status", TaskStatus.DONE),
-            Query.lessThan("dueDate", now.toISOString()),
-            Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-          ]
-        );
-
-        const lastMonthOverdueTasks = await databases.listDocuments(
-          DATABASE_ID,
-          TASKS_ID,
-          [
-            Query.equal("projectId", projectId),
-            Query.notEqual("status", TaskStatus.DONE),
-            Query.lessThan("dueDate", now.toISOString()),
-            Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-            Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-          ]
-        );
-
-        const overdueTaskCount = thisMonthOverdueTasks.total;
-        const overdueTaskDifference = overdueTaskCount - lastMonthOverdueTasks.total;
-
-        return c.json({
-          data: {
-            taskCount,
-            taskDifference,
-            assignedTaskCount,
-            assignedTaskDifference,
-            completedTaskCount,
-            completedTaskDifference,
-            incompleteTaskCount,
-            incompleteTaskDifference,
-            overdueTaskCount,
-            overdueTaskDifference,
-          }
-        });
-      }
-    )
-  
-
+    );
 
 export default app;

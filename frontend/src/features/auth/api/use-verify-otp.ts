@@ -1,27 +1,25 @@
 import { useMutation } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-
-import { rpc } from "@/lib/rpc";
 import { toast } from "sonner";
-
-type ResponseType = InferResponseType<typeof rpc.api.auth["verify-otp"]["$post"]>;
-type RequestType = InferRequestType<typeof rpc.api.auth["verify-otp"]["$post"]>;
+import { supabase } from "@/lib/supabase";
 
 export const useVerifyOtp = () => {
     const mutation = useMutation<
-        ResponseType,
+        { success: boolean },
         Error,
-        RequestType
+        { email: string; userId: string; secret: string }
     >({
-        mutationFn: async ({json}) => {
-            const response = await rpc.api.auth["verify-otp"]["$post"]({json});
+        mutationFn: async ({ email, userId, secret }) => {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token: secret,
+                type: "signup"
+            });
 
-            if (!response.ok) {
-                const error = await response.json() as { error?: string };
-                throw new Error(error.error || "Invalid OTP");
+            if (error) {
+                throw new Error(error.message);
             }
 
-            return await response.json();
+            return { success: true };
         },
         onSuccess: () => {
             toast.success("Email verified successfully");
@@ -29,8 +27,7 @@ export const useVerifyOtp = () => {
         onError: (error) => {
             toast.error(error.message || "Invalid OTP");
         }
-    })
+    });
 
     return mutation;
 };
-

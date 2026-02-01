@@ -13,7 +13,7 @@ export const useCurrent = () => {
 
             return user;
         },
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 60 * 60, // 1 hour - allow fresh session to be used
     });
 
     return query;

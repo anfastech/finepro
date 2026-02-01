@@ -1,27 +1,40 @@
 import { useMutation } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-
-import { rpc } from "@/lib/rpc";
 import { toast } from "sonner";
-
-type ResponseType = InferResponseType<typeof rpc.api.auth["change-password"]["$post"]>;
-type RequestType = InferRequestType<typeof rpc.api.auth["change-password"]["$post"]>;
+import { supabase } from "@/lib/supabase";
 
 export const useChangePassword = () => {
     const mutation = useMutation<
-        ResponseType,
+        { success: boolean },
         Error,
-        RequestType
+        { currentPassword: string; newPassword: string }
     >({
-        mutationFn: async ({json}) => {
-            const response = await rpc.api.auth["change-password"]["$post"]({json});
-
-            if (!response.ok) {
-                const error = await response.json() as { error?: string };
-                throw new Error(error.error || "Failed to change password");
+        mutationFn: async ({ currentPassword, newPassword }) => {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError || !user) {
+                throw new Error("User not authenticated");
             }
 
-            return await response.json();
+            // Verify current password by trying to sign in
+            const { error: verifyError } = await supabase.auth.signInWithPassword({
+                email: user.email || "",
+                password: currentPassword
+            });
+
+            if (verifyError) {
+                throw new Error("Current password is incorrect");
+            }
+
+            // Update password
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (updateError) {
+                throw new Error("Failed to update password");
+            }
+
+            return { success: true };
         },
         onSuccess: () => {
             toast.success("Password changed successfully");
@@ -29,8 +42,7 @@ export const useChangePassword = () => {
         onError: (error) => {
             toast.error(error.message || "Failed to change password");
         }
-    })
+    });
 
     return mutation;
 };
-

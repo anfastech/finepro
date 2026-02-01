@@ -57,9 +57,9 @@ export const ProjectsListClient = () => {
   const [activeExpanded, setActiveExpanded] = useState(true);
   const [closedExpanded, setClosedExpanded] = useState(false);
 
-  // Map member ID to member for owner lookup
+// Map member ID to member for owner lookup
   const membersMap = new Map(
-    members?.documents.map((m) => [m.userId, m]) || []
+    members?.documents.map((m: any) => [m.userId, m]) || []
   );
 
   // Calculate progress based on tasks (completed / total)

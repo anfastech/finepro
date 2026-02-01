@@ -25,7 +25,7 @@ export const WorkspaceSwitcher = () => {
     router.push(`/workspaces/${id}`);
   };
 
-  const currentWorkspace = workspaces?.documents.find((w: Workspace) => w.$id === workspaceId);
+  const currentWorkspace = workspaces?.documents.find((w: any) => w.$id === workspaceId);
 
   return (
     <Select onValueChange={onSelect} value={workspaceId}>
@@ -50,7 +50,7 @@ export const WorkspaceSwitcher = () => {
         </div>
       </SelectTrigger>
       <SelectContent>
-        {workspaces?.documents.map((workspace: Workspace) => (
+        {workspaces?.documents.map((workspace: any) => (
           <SelectItem key={workspace.$id} value={workspace.$id}>
             <div className="flex justify-start items-center gap-3 font-medium">
               <WorkspaceAvatar

@@ -56,7 +56,7 @@ export const CreateTeamForm = ({
     };
 
     mutate(
-      { form: finalValues },
+      { json: finalValues },
       {
         onSuccess: () => {
           form.reset();

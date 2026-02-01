@@ -1,56 +1,59 @@
 import { useQuery } from "@tanstack/react-query";
-import { Models } from "node-appwrite";
+import { supabase } from "@/lib/supabase";
 
-import { api } from "@/lib/api";
-import { Project } from "../types";
+/**
+ * Fetches projects for a given workspace from Supabase.
+ * 
+ * Fixes:
+ * - Added better error handling and clear typing for expected shape.
+ * - Ensured `enabled` default only checks for `workspaceId` (prevents unintentional fetch).
+ * - Clearly typed query return for easier usage.
+ */
+
+interface Project {
+  id: string;
+  name: string;
+  workspace_id: string;
+  image_url?: string;
+  created_at?: string;
+  // Add other relevant fields as defined in the database
+}
 
 interface useGetProjectsProps {
   workspaceId?: string;
   enabled?: boolean;
 }
 
+interface UseGetProjectsResult {
+  data: Project[];
+  total: number;
+}
+
 export const useGetProjects = ({
   workspaceId,
   enabled,
 }: useGetProjectsProps) => {
-  const query = useQuery<Models.DocumentList<Project>>({
+  return useQuery<UseGetProjectsResult, Error>({
     queryKey: ["projects", workspaceId],
-    enabled: enabled ?? Boolean(workspaceId),
+    enabled: typeof enabled === "boolean" ? enabled : Boolean(workspaceId),
     queryFn: async () => {
       if (!workspaceId) throw new Error("Missing workspaceId");
 
-      // Fetch from FastAPI backend
-      // Backend expects workspace_id filter.
-      const data = await api.get<any[]>(`/workspaces/${workspaceId}/projects`);
+      const { data, error } = await supabase
+        .from<Project>("projects")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false });
 
-      if (!data) {
-        return { documents: [], total: 0 };
+      if (error) {
+        throw new Error(error.message || "Failed to fetch projects");
       }
-
-      // Map Backend (Python/SnakeCase) to Frontend (Appwrite/CamelCase)
-      const documents = data.map((project: any) => ({
-        $id: project.id,
-        $createdAt: project.created_at,
-        $updatedAt: project.updated_at,
-        $collectionId: "projects",
-        $databaseId: "finepro",
-        $permissions: [],
-
-        name: project.name,
-        imageUrl: "", // Backend doesn't support project images yet
-        workspaceId: project.workspace_id,
-        description: project.description,
-        status: project.status
-      })) as Project[];
-
       return {
-        documents,
-        total: documents.length
+        data: data ?? [],
+        total: data?.length ?? 0,
       };
     },
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
-
-  return query;
 };

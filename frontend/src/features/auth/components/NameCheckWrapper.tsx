@@ -12,7 +12,7 @@ export const NameCheckWrapper = () => {
         // Only check after user data is loaded
         if (!isLoading && user) {
             // Check if user doesn't have a name
-            if (!user.name || user.name.trim() === "") {
+            if (!user?.user_metadata?.full_name || user?.user_metadata?.full_name.trim() === "") {
                 setShowModal(true);
             }
         }

@@ -8,7 +8,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 
-import { signUpWithGoogle, signUpWithGithub } from "@/lib/oauth";
+
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,14 +79,13 @@ export const SignUpCard = () => {
     }
 
     sendOtp(
-      { json: values },
+      { email: values.email },
       {
         onSuccess: (data) => {
-          if ('userId' in data) {
+          if (data.success) {
             setEmail(values.email);
             setStep("otp");
             otpForm.setValue("email", values.email);
-            otpForm.setValue("userId", data.userId);
           }
         },
         onError: (error) => {
@@ -100,7 +99,7 @@ export const SignUpCard = () => {
 
   const onOtpSubmit = (values: z.infer<typeof verifyOtpSchema>) => {
     verifyOtp(
-      { json: values },
+      { email: values.email, userId: values.userId || '', secret: values.secret },
       {
         onSuccess: () => {
           setStep("details");
@@ -112,8 +111,12 @@ export const SignUpCard = () => {
     );
   };
 
-  const onDetailsSubmit = (values: z.infer<typeof registerWithOtpSchema>) => {
-    register({ json: values });
+const onDetailsSubmit = (values: z.infer<typeof registerWithOtpSchema>) => {
+    register({ 
+      email: values.email, 
+      password: values.password, 
+      name: values.name 
+    });
   };
 
   const isPending = isSendingOtp || isVerifyingOtp || isRegistering;
@@ -145,26 +148,36 @@ export const SignUpCard = () => {
       {step === "email" && (
         <>
           <CardContent className="px-6 md:px-7 pt-2 pb-6 md:pb-7 flex flex-col gap-y-3">
-            <Button
-              onClick={() => signUpWithGoogle()}
-              disabled={isPending}
-              variant="secondary"
-              size="lg"
-              className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+<a
+              href="/auth/oauth?provider=google"
+              className="w-full"
             >
-              <FcGoogle className="mr-2 size-5" />
-              Sign up with Google
-            </Button>
-            <Button
-              onClick={() => signUpWithGithub()}
-              disabled={isPending}
-              variant="secondary"
-              size="lg"
-              className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+              <Button
+                type="button"
+                disabled={isPending}
+                variant="secondary"
+                size="lg"
+                className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+              >
+                <FcGoogle className="mr-2 size-5" />
+                Sign up with Google
+              </Button>
+            </a>
+            <a
+              href="/auth/oauth?provider=github"
+              className="w-full"
             >
-              <FaGithub className="mr-2 size-5" />
-              Sign up with Github
-            </Button>
+              <Button
+                type="button"
+                disabled={isPending}
+                variant="secondary"
+                size="lg"
+                className="w-full border border-gray/20 shadow-none rounded-md bg-white text-gray-700 hover:bg-gray-50 text-sm md:text-base"
+              >
+                <FaGithub className="mr-2 size-5" />
+                Sign up with Github
+              </Button>
+            </a>
           </CardContent>
           <div className="px-6 md:px-7 flex items-center gap-2 md:gap-3">
             <div className="flex-1 h-px bg-gray-300"></div>

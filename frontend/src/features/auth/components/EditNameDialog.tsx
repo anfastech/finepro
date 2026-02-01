@@ -49,7 +49,7 @@ export const EditNameDialog = ({ open, onOpenChange, currentName = "" }: EditNam
 
     const onSubmit = (data: z.infer<typeof updateNameSchema>) => {
         updateName(
-            { json: data },
+            { name: data.name },
             {
                 onSuccess: () => {
                     onOpenChange(false);

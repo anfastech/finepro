@@ -1,8 +1,8 @@
+import { API_URL } from "@/config";
 /**
  * API Client for fetching from FastAPI Backend with automatic JWT injection.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 let tokenCache: string | null = null;
 let tokenExpiry: number | null = null;
@@ -16,30 +16,37 @@ async function fetchToken() {
     }
 
     try {
-        // 1. Get Appwrite JWT from our Next.js backend
+        console.log("[AuthBridge] Fetching Supabase JWT...");
         const response = await fetch("/api/auth/jwt");
-        if (!response.ok) throw new Error("Could not fetch Appwrite JWT");
-        const { jwt: appwriteToken } = await response.json();
+        if (!response.ok) {
+            console.error("[AuthBridge] Could not fetch Supabase JWT", response.status);
+            throw new Error("Could not fetch Supabase JWT");
+        }
+        const { jwt: supabaseToken, user_id } = await response.json();
+        console.log(`[AuthBridge] Received Supabase JWT for UserID: ${user_id}`);
 
-        // 2. Exchange Appwrite JWT for FastAPI JWT
+        // 2. Exchange Supabase JWT for FastAPI JWT
+        console.log("[AuthBridge] Exchanging for FastAPI token...");
         const exchangeResponse = await fetch(`${API_URL}/auth/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ appwrite_token: appwriteToken })
+            body: JSON.stringify({ supabase_token: supabaseToken })
         });
 
         if (!exchangeResponse.ok) {
+            console.error("[AuthBridge] FastAPI token exchange failed", exchangeResponse.status);
             throw new Error("FastAPI token exchange failed");
         }
 
         const { access_token, expires_in } = await exchangeResponse.json();
+        console.log("[AuthBridge] FAST API Token exchange successful");
 
         tokenCache = access_token;
         tokenExpiry = Date.now() + (access_token ? (expires_in - 60) * 1000 : 0); // Buffer of 60s
 
         return access_token;
     } catch (error) {
-        console.error("Token Bridge Error:", error);
+        console.error("[AuthBridge] Token Bridge Error:", error);
         return null;
     }
 }

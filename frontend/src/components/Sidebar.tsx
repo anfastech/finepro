@@ -23,7 +23,7 @@ export const Sidebar = () => {
   const workspaceId = useWorkspaceId();
   const pathname = usePathname();
 
-  const displayName = user?.name || user?.email || "User";
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "User";
   const avatarInitial = displayName.charAt(0).toUpperCase();
 
   // Get tasks for calendar badge count (tasks due this month)

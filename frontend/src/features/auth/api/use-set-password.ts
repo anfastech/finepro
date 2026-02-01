@@ -1,27 +1,30 @@
 import { useMutation } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
-
-import { rpc } from "@/lib/rpc";
 import { toast } from "sonner";
-
-type ResponseType = InferResponseType<typeof rpc.api.auth["set-password"]["$post"]>;
-type RequestType = InferRequestType<typeof rpc.api.auth["set-password"]["$post"]>;
+import { supabase } from "@/lib/supabase";
 
 export const useSetPassword = () => {
     const mutation = useMutation<
-        ResponseType,
+        { success: boolean },
         Error,
-        RequestType
+        { password: string }
     >({
-        mutationFn: async ({json}) => {
-            const response = await rpc.api.auth["set-password"]["$post"]({json});
-
-            if (!response.ok) {
-                const error = await response.json() as { error?: string };
-                throw new Error(error.error || "Failed to set password");
+        mutationFn: async ({ password }) => {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError || !user) {
+                throw new Error("User not authenticated");
             }
 
-            return await response.json();
+            // Update password
+            const { error: updateError } = await supabase.auth.updateUser({
+                password
+            });
+
+            if (updateError) {
+                throw new Error("Failed to update password");
+            }
+
+            return { success: true };
         },
         onSuccess: () => {
             toast.success("Password set successfully");
@@ -29,8 +32,7 @@ export const useSetPassword = () => {
         onError: (error) => {
             toast.error(error.message || "Failed to set password");
         }
-    })
+    });
 
     return mutation;
 };
-

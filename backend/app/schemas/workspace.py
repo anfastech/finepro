@@ -44,7 +44,7 @@ class WorkspaceCreateRequest(WorkspaceBase):
 
 class WorkspaceCreate(WorkspaceBase):
     owner_id: UUID
-    appwrite_id: Optional[str] = None
+    supabase_id: Optional[str] = None
 
 
 class WorkspaceUpdate(BaseModel):

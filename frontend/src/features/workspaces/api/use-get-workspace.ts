@@ -16,7 +16,7 @@ export const useGetWorkspace = ({
 
             if (!data) return null;
 
-            // Adapt FastAPI to Frontend Appwrite types
+            // Adapt FastAPI to Frontend Supabase types
             return {
                 ...data,
                 $id: data.id,

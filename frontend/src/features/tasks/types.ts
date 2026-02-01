@@ -1,4 +1,13 @@
-import { Models } from "node-appwrite";
+// Legacy Document interface for backward compatibility
+interface Document {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  $collectionId: string;
+  $databaseId: string;
+  $permissions: any[];
+  $sequence?: string;
+}
 
 export enum TaskStatus {
     BACKLOG = "BACKLOG",
@@ -8,7 +17,7 @@ export enum TaskStatus {
     DONE = "DONE" 
 };
 
-export type Task = Models.Document & {
+export type Task = Document & {
     name: string;
     status: TaskStatus;
     workspaceId: string;

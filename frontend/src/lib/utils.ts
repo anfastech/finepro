@@ -8,9 +8,9 @@ export function generateWorkspaceFileUrl(fileId: string): string {
   return `/api/workspaces/file/${fileId}`;
 }
 
-export function generateInviteCode(length: number) {
+export function generateInviteCode(length: number = 8) {
   const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
 
   for (let i = 0; i < length; i++) {

@@ -34,8 +34,8 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
         label: project.name
     }));
 
-    const memberOptions = members?.documents.map((member) => ({
-        value: member.$id,
+    const memberOptions = members?.documents.map((member: any) => ({
+        value: member.$id || member.id,
         label: member.name
     }));
 
@@ -96,7 +96,7 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
                 <SelectContent>
                     <SelectItem value="all">All assignees</SelectItem>
                     <SelectSeparator />
-                    {memberOptions?.map((member) => (
+                    {memberOptions?.map((member: any) => (
                         <SelectItem key={member.value} value={member.value}>
                             {member.label}
                         </SelectItem>

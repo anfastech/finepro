@@ -19,10 +19,10 @@ export const useAddTeamMembers = () => {
 
       return await response.json();
     },
-    onSuccess: ({ data }) => {
+    onSuccess: (_, variables) => {
       toast.success("Members added to team");
       queryClient.invalidateQueries({ queryKey: ["teams"] });
-      queryClient.invalidateQueries({ queryKey: ["team", data.$id] });
+      queryClient.invalidateQueries({ queryKey: ["team", variables.param.teamId] });
     },
     onError: () => {
       toast.error("Failed to add team members");
