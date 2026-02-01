@@ -8,7 +8,7 @@ interface useGetTeamProps {
 }
 
 export const useGetTeam = ({ teamId }: useGetTeamProps) => {
-  const query = useQuery<Team>({
+  const query = useQuery({
     queryKey: ["team", teamId],
     queryFn: async () => {
       const response = await rpc.api.teams[":teamId"].$get({

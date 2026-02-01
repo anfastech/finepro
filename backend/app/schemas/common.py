@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, Dict, Any
 from datetime import datetime
-from uuid import UUID
+
 
 
 class Token(BaseModel):

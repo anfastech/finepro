@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from uuid import UUID
+
 
 from app.models.sprint import Sprint, SprintTask
 from app.models.enums import ActionType, EntityType
@@ -20,7 +20,7 @@ class SprintService:
         self.db = db
         self.activity_service = ActivityService(db)
     
-    async def get_by_id(self, sprint_id: UUID) -> Optional[Sprint]:
+    async def get_by_id(self, sprint_id: str) -> Optional[Sprint]:
         """Get sprint by ID with tasks"""
         result = await self.db.execute(
             select(Sprint)
@@ -29,7 +29,7 @@ class SprintService:
         )
         return result.scalar_one_or_none()
     
-    async def get_by_project(self, project_id: UUID) -> List[Sprint]:
+    async def get_by_project(self, project_id: str) -> List[Sprint]:
         """Get all sprints in a project"""
         result = await self.db.execute(
             select(Sprint)
@@ -38,7 +38,7 @@ class SprintService:
         )
         return list(result.scalars().all())
     
-    async def create(self, data: SprintCreate, user_id: UUID) -> Sprint:
+    async def create(self, data: SprintCreate, user_id: str) -> Sprint:
         """Create a new sprint"""
         sprint = Sprint(
             project_id=data.project_id,
@@ -63,7 +63,7 @@ class SprintService:
         
         return sprint
     
-    async def update(self, sprint_id: UUID, data: SprintUpdate, user_id: UUID) -> Optional[Sprint]:
+    async def update(self, sprint_id: str, data: SprintUpdate, user_id: str) -> Optional[Sprint]:
         """Update a sprint"""
         sprint = await self.get_by_id(sprint_id)
         if not sprint:
@@ -87,7 +87,7 @@ class SprintService:
         
         return sprint
     
-    async def delete(self, sprint_id: UUID, user_id: UUID) -> bool:
+    async def delete(self, sprint_id: str, user_id: str) -> bool:
         """Delete a sprint"""
         sprint = await self.get_by_id(sprint_id)
         if not sprint:
@@ -112,7 +112,7 @@ class SprintService:
             return True
         return False
     
-    async def add_task_to_sprint(self, sprint_id: UUID, task_id: UUID, user_id: UUID) -> bool:
+    async def add_task_to_sprint(self, sprint_id: str, task_id: str, user_id: str) -> bool:
         """Assign a task to a sprint"""
         # Check if already assigned
         result = await self.db.execute(
@@ -144,7 +144,7 @@ class SprintService:
         
         return True
     
-    async def remove_task_from_sprint(self, sprint_id: UUID, task_id: UUID, user_id: UUID) -> bool:
+    async def remove_task_from_sprint(self, sprint_id: str, task_id: str, user_id: str) -> bool:
         """Remove a task from a sprint"""
         result = await self.db.execute(
             delete(SprintTask).where(

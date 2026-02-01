@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
+
 
 
 class CommentBase(BaseModel):
@@ -9,8 +9,8 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    task_id: UUID
-    user_id: UUID
+    task_id: str
+    user_id: str
 
 
 class CommentUpdate(BaseModel):
@@ -20,8 +20,8 @@ class CommentUpdate(BaseModel):
 class CommentResponse(CommentBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    task_id: UUID
-    user_id: UUID
+    id: str
+    task_id: str
+    user_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None

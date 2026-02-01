@@ -10,14 +10,7 @@ import { supabase } from "@/lib/supabase";
  * - Clearly typed query return for easier usage.
  */
 
-interface Project {
-  id: string;
-  name: string;
-  workspace_id: string;
-  image_url?: string;
-  created_at?: string;
-  // Add other relevant fields as defined in the database
-}
+import { Project } from "../types";
 
 interface useGetProjectsProps {
   workspaceId?: string;
@@ -33,14 +26,14 @@ export const useGetProjects = ({
   workspaceId,
   enabled,
 }: useGetProjectsProps) => {
-  return useQuery<UseGetProjectsResult, Error>({
+  return useQuery({
     queryKey: ["projects", workspaceId],
     enabled: typeof enabled === "boolean" ? enabled : Boolean(workspaceId),
     queryFn: async () => {
       if (!workspaceId) throw new Error("Missing workspaceId");
 
       const { data, error } = await supabase
-        .from<Project>("projects")
+        .from("projects")
         .select("*")
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false });
@@ -48,8 +41,15 @@ export const useGetProjects = ({
       if (error) {
         throw new Error(error.message || "Failed to fetch projects");
       }
+      const mappedData = (data || []).map((project: any) => ({
+        ...project,
+        id: project.id || project.$id,
+        $id: project.id || project.$id,
+        imageUrl: project.imageUrl || project.image_url || "",
+      }));
+
       return {
-        documents: data ?? [],
+        documents: mappedData,
         total: data?.length ?? 0,
       };
     },

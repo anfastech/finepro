@@ -52,7 +52,7 @@ async def create_project(
     return project
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: str,
     db: AsyncSession = Depends(get_db),
@@ -71,7 +71,7 @@ async def get_project(
     return project
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
+@router.patch("/projects/{project_id}", response_model=ProjectResponse)
 async def update_project(
     project_id: str,
     project_data: ProjectUpdate,
@@ -91,7 +91,7 @@ async def update_project(
     return project
 
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
     project_id: str,
     db: AsyncSession = Depends(get_db),
@@ -110,7 +110,7 @@ async def delete_project(
     return None
 
 
-@router.get("/{project_id}/analytics")
+@router.get("/projects/{project_id}/analytics")
 async def get_project_analytics(
     project_id: str,
     db: AsyncSession = Depends(get_db),

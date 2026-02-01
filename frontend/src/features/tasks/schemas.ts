@@ -18,7 +18,7 @@ export const createTaskSchema = z.object({
     duration: z.number().positive("Duration must be positive").optional(),
     totalSubtasks: z.number().int().nonnegative("Total subtasks must be non-negative").optional(),
     completedSubtasks: z.number().int().nonnegative("Completed subtasks must be non-negative").optional(),
-    priority: z.enum(["ASAP", "HIGH", "MEDIUM", "LOW"]).optional(),
+    priority: z.enum(["critical", "high", "medium", "low"]).optional(),
     isUrgent: z.boolean().optional(),
     teamId: z.string().trim().optional(),
 });

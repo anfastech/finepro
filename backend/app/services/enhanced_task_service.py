@@ -49,11 +49,15 @@ class EnhancedTaskService:
         if not user:
             raise ValueError("User not found")
         
+        # Convert dict to model
+        from app.schemas.task import TaskCreate
+        create_data = TaskCreate(**task_data)
+        
         # Create the task using base service
         task = await self.base_service.create(
-            task_data=task_data,
             project_id=project_id,
-            created_by=created_by
+            data=create_data,
+            user_id=created_by
         )
         
         # Real-time notifications (using background tasks)
@@ -96,8 +100,12 @@ class EnhancedTaskService:
         # Detect assignment change
         old_assignee = str(existing_task.assigned_to) if existing_task.assigned_to else None
         
+        # Convert dict to model
+        from app.schemas.task import TaskUpdate
+        update_schema = TaskUpdate(**update_data)
+        
         # Update the task using base service
-        task = await self.base_service.update(task_id, update_data, updated_by)
+        task = await self.base_service.update(task_id, update_schema, updated_by)
         new_data = task.to_dict()
         
         # Calculate changes for real-time updates
@@ -182,8 +190,9 @@ class EnhancedTaskService:
         old_assignee = str(task.assigned_to) if task.assigned_to else None
         
         # Update assignment using base service
-        update_data = {"assigned_to": assigned_to}
-        updated_task = await self.base_service.update(task_id, update_data, assigned_by)
+        from app.schemas.task import TaskUpdate
+        update_schema = TaskUpdate(assigned_to=assigned_to)
+        updated_task = await self.base_service.update(task_id, update_schema, assigned_by)
         
         # Real-time notifications
         asyncio.create_task(self._handle_task_assignment_realtime(
@@ -223,8 +232,9 @@ class EnhancedTaskService:
         user = result.scalar_one_or_none()
         
         # Update status using base service
-        update_data = {"status": new_status}
-        updated_task = await self.base_service.update(task_id, update_data, changed_by)
+        from app.schemas.task import TaskUpdate
+        update_schema = TaskUpdate(status=new_status)
+        updated_task = await self.base_service.update(task_id, update_schema, changed_by)
         
         # Real-time notifications
         asyncio.create_task(self._handle_task_status_change_realtime(

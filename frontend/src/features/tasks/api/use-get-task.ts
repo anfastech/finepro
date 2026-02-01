@@ -33,12 +33,12 @@ export const useGetTask = ({
 
             // Map to frontend format
             const data: Task = {
+                id: task.id,
                 $id: task.id,
+                created_at: task.created_at,
+                updated_at: task.updated_at,
                 $createdAt: task.created_at,
                 $updatedAt: task.updated_at,
-                $collectionId: "tasks",
-                $databaseId: "finepro",
-                $permissions: [],
 
                 name: task.title,
                 status: isValidStatus(task.status) ? task.status : TaskStatus.TODO,
@@ -50,17 +50,17 @@ export const useGetTask = ({
                 description: task.description,
                 priority: task.priority,
 
-                project: task.project || { 
-    $id: "unknown",
-    $createdAt: "",
-    $updatedAt: "",
-    $collectionId: "projects",
-    $databaseId: "finepro",
-    $permissions: [],
-    name: "Unknown Project",
-    imageUrl: "",
-    workspaceId: ""
-},
+                project: task.project || {
+                    $id: "unknown",
+                    $createdAt: "",
+                    $updatedAt: "",
+                    $collectionId: "projects",
+                    $databaseId: "finepro",
+                    $permissions: [],
+                    name: "Unknown Project",
+                    imageUrl: "",
+                    workspaceId: ""
+                },
                 assignee: task.assigned_user ? {
                     name: task.assigned_user.name,
                     avatarColor: task.assigned_user.avatar_color || { bg: "bg-gray-100", text: "text-gray-700" }

@@ -27,16 +27,16 @@ export const EditTaskFormWrapper = ({
     const { data: members, isLoading: isLoadingMembers } = useGetMembers({ workspaceId });
 
     const projectOptions = projects?.documents.map((project) => ({
-        id: project.$id,
+        id: project.id,
         name: project.name,
-        imageUrl: project.imageUrl
-    }));
+        imageUrl: project.imageUrl || project.image_url || ''
+    })) || [];
 
     const memberOptions = members?.documents.map((member: any) => ({
-        id: member.$id || member.id,
+        id: member.id,
         name: member.name || member.email || '',
         avatarColor: member.avatarColor || member.avatar_color,
-    }));
+    })) || [];
 
     const loading = isLoading || isLoadingProjects || isLoadingMembers;
 
@@ -58,8 +58,8 @@ export const EditTaskFormWrapper = ({
         <EditTaskForm
             onCancel={onCancel}
             initialValues={initialValues}
-            projectOptions={projectOptions ?? []}
-            memberOptions={memberOptions ?? []}
+            projectOptions={projectOptions}
+            memberOptions={memberOptions}
         />
     );
 };

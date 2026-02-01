@@ -26,7 +26,10 @@ export const useGetMembers = ({
 
             // Map to frontend format
             const documents = members.map((m: any) => ({
+                id: m.id,
                 $id: m.id,
+                created_at: m.joined_at,
+                updated_at: m.joined_at,
                 $createdAt: m.joined_at,
                 $updatedAt: m.joined_at,
                 $collectionId: "members",
@@ -40,12 +43,12 @@ export const useGetMembers = ({
                 email: m.user?.email || "",
             })) as any;
 
-return {
+            return {
                 documents: documents as any,
                 total: documents.length,
             };
         }
     });
 
-return query;
+    return query;
 };

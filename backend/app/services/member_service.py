@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from uuid import UUID
+
 
 from app.models.member import Member
 from app.models.user import User
@@ -20,7 +20,7 @@ class MemberService:
         self.db = db
         self.activity_service = ActivityService(db)
     
-    async def get_by_id(self, member_id: UUID) -> Optional[Member]:
+    async def get_by_id(self, member_id: str) -> Optional[Member]:
         """Get member record by its unique ID"""
         result = await self.db.execute(
             select(Member)
@@ -29,7 +29,7 @@ class MemberService:
         )
         return result.scalar_one_or_none()
     
-    async def get_membership(self, user_id: UUID, workspace_id: UUID) -> Optional[Member]:
+    async def get_membership(self, user_id: str, workspace_id: str) -> Optional[Member]:
         """Get membership record for a specific user in a workspace"""
         result = await self.db.execute(
             select(Member)
@@ -42,7 +42,7 @@ class MemberService:
         )
         return result.scalar_one_or_none()
     
-    async def list_workspace_members(self, workspace_id: UUID) -> List[Member]:
+    async def list_workspace_members(self, workspace_id: str) -> List[Member]:
         """List all members of a workspace"""
         result = await self.db.execute(
             select(Member)
@@ -54,9 +54,9 @@ class MemberService:
     
     async def add_member(
         self,
-        workspace_id: UUID,
-        user_id: UUID,
-        actor_id: UUID,
+        workspace_id: str,
+        user_id: str,
+        actor_id: str,
         role: MemberRole = MemberRole.MEMBER
     ) -> Member:
         """Add a user to a workspace"""
@@ -85,7 +85,7 @@ class MemberService:
         
         return member
     
-    async def update_role(self, member_id: UUID, role: MemberRole, actor_id: UUID) -> Optional[Member]:
+    async def update_role(self, member_id: str, role: MemberRole, actor_id: str) -> Optional[Member]:
         """Update a member's role"""
         member = await self.get_by_id(member_id)
         if not member:
@@ -107,7 +107,7 @@ class MemberService:
         
         return member
     
-    async def remove_member(self, member_id: UUID, actor_id: UUID) -> bool:
+    async def remove_member(self, member_id: str, actor_id: str) -> bool:
         """Remove a member from a workspace"""
         member = await self.get_by_id(member_id)
         if not member:
@@ -133,7 +133,7 @@ class MemberService:
             return True
         return False
     
-    async def is_admin(self, user_id: UUID, workspace_id: UUID) -> bool:
+    async def is_admin(self, user_id: str, workspace_id: str) -> bool:
         """Check if user is an admin of the workspace"""
         member = await self.get_membership(user_id, workspace_id)
         return member is not None and member.role == MemberRole.ADMIN

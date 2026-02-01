@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -66,7 +66,13 @@ async def log_requests(request: Request, call_next):
     start_time = time.time()
     
     # Log request details
-    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    is_websocket = "upgrade" in request.headers.get("connection", "").lower() and \
+                   request.headers.get("upgrade", "").lower() == "websocket"
+    
+    logger.info(f"Incoming {'WebSocket upgrade' if is_websocket else 'request'}: {request.method} {request.url.path}")
+    
+    # Log origin
+    logger.info(f"Origin: {request.headers.get('origin')}")
     
     # Log authorization header (redacted)
     auth_header = request.headers.get("Authorization")
@@ -74,7 +80,9 @@ async def log_requests(request: Request, call_next):
         token_part = auth_header[:15] + "..." if len(auth_header) > 15 else "SHORT"
         logger.info(f"Authorization Header: {token_part}")
     else:
-        logger.warning("No Authorization Header present")
+        # Don't log warning for WebSockets as they usually don't have Auth header (token is in URL)
+        if not is_websocket:
+            logger.warning("No Authorization Header present")
         
     response = await call_next(request)
     
@@ -98,7 +106,7 @@ async def add_process_time_header(request: Request, call_next):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Global exception: {exc}", exc_info=True)
-    return JSONResponse(
+    response = JSONResponse(
         status_code=500,
         content={
             "success": False,
@@ -106,6 +114,12 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": str(exc) if settings.DEBUG else None
         }
     )
+    # Ensure CORS headers are present on 500 errors
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 
 # Health check endpoint
@@ -129,6 +143,20 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs" if settings.DEBUG else "Documentation not available in production"
     }
+
+
+@app.websocket("/ws-test")
+async def websocket_test(websocket: WebSocket):
+    """Test WebSocket endpoint"""
+    await websocket.accept()
+    logger.info("Test WebSocket connection accepted")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Test WebSocket received: {data}")
+            await websocket.send_text(f"Echo: {data}")
+    except Exception as e:
+        logger.info(f"Test WebSocket closed: {e}")
 
 
 # Include API router

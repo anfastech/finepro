@@ -37,12 +37,10 @@ export const useCreateProject = () => {
 
             // If FormData is used, set headers accordingly; else, send JSON
             const response = formData
-                ? await api.post<Project>(url, formData, {
-                    headers: { "Content-Type": "multipart/form-data" }
-                  })
+                ? await api.post<Project>(url, formData)
                 : await api.post<Project>(url, { name, image: typeof image === "string" ? image : undefined });
 
-            return response.data;
+            return response;
         },
         onSuccess: () => {
             toast.success("Project created");

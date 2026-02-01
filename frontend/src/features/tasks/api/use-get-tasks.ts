@@ -44,7 +44,7 @@ export const useGetTasks = ({
                     .from('projects')
                     .select('id')
                     .eq('workspace_id', workspaceId);
-                
+
                 if (projects && projects.length > 0) {
                     const projectIds = projects.map(p => p.id);
                     query = query.in('project_id', projectIds);
@@ -66,12 +66,12 @@ export const useGetTasks = ({
             }
 
             const documents = tasks.map((task: any) => ({
+                id: task.id,
                 $id: task.id,
+                created_at: task.created_at,
+                updated_at: task.updated_at,
                 $createdAt: task.created_at,
                 $updatedAt: task.updated_at,
-                $collectionId: "tasks",
-                $databaseId: "finepro",
-                $permissions: [],
 
                 name: task.title,
                 status: isValidStatus(task.status) ? task.status : TaskStatus.TODO,
@@ -83,10 +83,13 @@ export const useGetTasks = ({
                 description: task.description,
                 priority: task.priority,
 
-                project: task.project || { name: "Unknown Project" },
+                project: task.project ? {
+                    name: task.project.name,
+                    imageUrl: task.project.image_url || task.project.imageUrl || ""
+                } : { name: "Unknown Project", imageUrl: "" },
                 assignee: task.assigned_user ? {
                     name: task.assigned_user.name,
-                    avatarUrl: task.assigned_user.avatar_url
+                    avatarColor: task.assigned_user.avatar_color || { bg: "bg-gray-100", text: "text-gray-700" }
                 } : { name: "Unassigned" }
             })) as Task[];
 

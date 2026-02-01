@@ -31,14 +31,14 @@ export const useGetTeams = ({
   workspaceId,
   enabled,
 }: useGetTeamsProps) => {
-  return useQuery<UseGetTeamsResult, Error>({
+  return useQuery({
     queryKey: ["teams", workspaceId],
     enabled: typeof enabled === "boolean" ? enabled : Boolean(workspaceId),
     queryFn: async () => {
       if (!workspaceId) throw new Error("Missing workspaceId");
 
       const { data, error } = await supabase
-        .from<Team>("teams")
+        .from("teams")
         .select("*")
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false });

@@ -8,13 +8,16 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, H
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from app.core.websocket_manager import ws_manager, WSMessage, MessageType
-from app.api.deps import get_current_user_ws
+from app.core.websocket_manager import ws_manager, WSMessage, MessageType, logger as ws_logger
+from app.api.deps import get_current_user_ws, get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 from app.models.user import User
 from app.services.project_service import ProjectService
 from app.services.task_service import TaskService
 from app.services.workspace_service import WorkspaceService
-from app.database import get_db
+from app.database import AsyncSessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -44,33 +47,43 @@ async def websocket_connect(websocket: WebSocket, token: str):
         # Authenticate user from token
         user = await get_current_user_ws(token, websocket)
         if not user:
+            logger.warning(f"WebSocket auth failed for token starting with {token[:10]}")
+            # If not accepted yet, FastAPI returns 403 if we just return
+            # or we can accept then close with code
+            await websocket.accept()
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
+        # Accept the connection after successful authentication
+        await websocket.accept()
+        logger.info(f"WebSocket connection accepted for user {user.email}")
+        
         # Wait for connection parameters
-        data = await websocket.receive_text()
         try:
+            data = await websocket.receive_text()
+            logger.info(f"WebSocket received initial data: {data}")
             connect_data = json.loads(data)
             workspace_id = connect_data.get("workspace_id")
             user_info = connect_data.get("user_info", {})
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError, Exception) as e:
+            logger.error(f"Failed to parse WebSocket initial data: {e}")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
         if not workspace_id:
+            logger.warning("WebSocket connected but no workspace_id provided")
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
+        logger.info(f"WebSocket connecting to workspace: {workspace_id}")
+        
         # Validate workspace access
-        db = next(get_db())
-        try:
+        async with AsyncSessionLocal() as db:
             workspace_service = WorkspaceService(db)
             has_access = await workspace_service.is_member(str(user.id), workspace_id)
             if not has_access:
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
                 return
-        finally:
-            await db.close()
         
         # Connect to WebSocket manager
         connection = await ws_manager.connect(
@@ -147,8 +160,7 @@ async def handle_join_room(connection, user: User, message: Dict[str, Any]):
     
     # Validate access to room
     if room_type == "project":
-        db = next(get_db())
-        try:
+        async with AsyncSessionLocal() as db:
             project_service = ProjectService(db)
             has_access = await project_service.has_access(room_id, str(user.id))
             if not has_access:
@@ -159,11 +171,8 @@ async def handle_join_room(connection, user: User, message: Dict[str, Any]):
                     user_id="system"
                 ))
                 return
-        finally:
-            await db.close()
     elif room_type == "task":
-        db = next(get_db())
-        try:
+        async with AsyncSessionLocal() as db:
             task_service = TaskService(db)
             has_access = await task_service.has_access(room_id, str(user.id))
             if not has_access:
@@ -174,8 +183,6 @@ async def handle_join_room(connection, user: User, message: Dict[str, Any]):
                     user_id="system"
                 ))
                 return
-        finally:
-            await db.close()
     
     # Join room
     await ws_manager.join_room(str(user.id), room_id, room_type)
@@ -279,12 +286,11 @@ async def handle_chat_message(connection, user: User, message: Dict[str, Any]):
 @router.get("/stats/workspace/{workspace_id}")
 async def get_workspace_stats(
     workspace_id: str,
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Get WebSocket statistics for a workspace"""
     # Check if user has access to workspace
-    db = next(get_db())
-    try:
+    async with AsyncSessionLocal() as db:
         workspace_service = WorkspaceService(db)
         has_access = await workspace_service.is_member(str(current_user.id), workspace_id)
         if not has_access:
@@ -292,11 +298,9 @@ async def get_workspace_stats(
         
         stats = ws_manager.get_workspace_stats(workspace_id)
         return {"success": True, "data": stats}
-    finally:
-        await db.close()
 
 @router.get("/stats/global")
-async def get_global_stats(current_user: User = Depends(get_current_user_ws)):
+async def get_global_stats(current_user: User = Depends(get_current_user)):
     """Get global WebSocket statistics (admin only)"""
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -307,7 +311,7 @@ async def get_global_stats(current_user: User = Depends(get_current_user_ws)):
 @router.post("/broadcast/global")
 async def broadcast_global_message(
     message_data: Dict[str, Any],
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Broadcast message to all connected users (admin only)"""
     if current_user.role not in ["admin", "super_admin"]:
@@ -328,12 +332,11 @@ async def broadcast_global_message(
 async def broadcast_workspace_message(
     workspace_id: str,
     message_data: Dict[str, Any],
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Broadcast message to all users in a workspace"""
     # Check workspace access
-    db = next(get_db())
-    try:
+    async with AsyncSessionLocal() as db:
         workspace_service = WorkspaceService(db)
         has_access = await workspace_service.is_member(str(current_user.id), workspace_id)
         if not has_access:
@@ -350,14 +353,12 @@ async def broadcast_workspace_message(
         await ws_manager.broadcast_to_workspace(workspace_id, message, exclude_user=str(current_user.id))
         
         return {"success": True, "message": f"Message broadcasted to workspace {workspace_id}"}
-    finally:
-        await db.close()
 
 @router.post("/notify/ai-suggestion/{user_id}")
 async def send_ai_suggestion(
     user_id: str,
     suggestion_data: Dict[str, Any],
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Send AI-powered suggestion to user (system endpoint)"""
     if current_user.role not in ["admin", "super_admin", "system"]:
@@ -373,7 +374,7 @@ async def send_ai_suggestion(
 @router.get("/connections")
 async def get_active_connections(
     workspace_id: Optional[str] = Query(None, description="Filter by workspace ID"),
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Get active WebSocket connections (admin only)"""
     if current_user.role not in ["admin", "super_admin"]:
@@ -408,7 +409,7 @@ async def get_active_connections(
 async def disconnect_user(
     user_id: str,
     workspace_id: Optional[str] = Query(None, description="Workspace ID (optional)"),
-    current_user: User = Depends(get_current_user_ws)
+    current_user: User = Depends(get_current_user)
 ):
     """Force disconnect a user (admin only)"""
     if current_user.role not in ["admin", "super_admin"]:

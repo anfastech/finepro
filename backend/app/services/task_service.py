@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from uuid import UUID
+
 from datetime import datetime
 
 from app.models.task import Task
@@ -24,7 +24,7 @@ class TaskService:
         self.db = db
         self.activity_service = ActivityService(db)
     
-    async def get_by_id(self, task_id: UUID) -> Optional[Task]:
+    async def get_by_id(self, task_id: str) -> Optional[Task]:
         """Get task by ID with relationships"""
         result = await self.db.execute(
             select(Task)
@@ -39,10 +39,10 @@ class TaskService:
     
     async def get_by_project(
         self,
-        project_id: UUID,
+        project_id: str,
         status: Optional[TaskStatus] = None,
         priority: Optional[Priority] = None,
-        assigned_to: Optional[UUID] = None,
+        assigned_to: Optional[str] = None,
         search: Optional[str] = None,
         skip: int = 0,
         limit: int = 100
@@ -79,7 +79,7 @@ class TaskService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
     
-    async def get_by_epic(self, epic_id: UUID) -> List[Task]:
+    async def get_by_epic(self, epic_id: str) -> List[Task]:
         """Get all tasks in an epic"""
         result = await self.db.execute(
             select(Task)
@@ -90,9 +90,9 @@ class TaskService:
     
     async def create(
         self,
-        project_id: UUID,
+        project_id: str,
         data: TaskCreate,
-        user_id: UUID
+        user_id: str
     ) -> Task:
         """Create a new task"""
         # If no epic_id provided, get or create default epic for project
@@ -142,7 +142,7 @@ class TaskService:
         
         return task
     
-    async def update(self, task_id: UUID, data: TaskUpdate, user_id: UUID) -> Optional[Task]:
+    async def update(self, task_id: str, data: TaskUpdate, user_id: str) -> Optional[Task]:
         """Update a task"""
         task = await self.get_by_id(task_id)
         if not task:
@@ -182,7 +182,7 @@ class TaskService:
             
         return task
     
-    async def delete(self, task_id: UUID, user_id: UUID) -> bool:
+    async def delete(self, task_id: str, user_id: str) -> bool:
         """Delete a task"""
         result = await self.db.execute(
             delete(Task).where(Task.id == task_id)
@@ -200,7 +200,7 @@ class TaskService:
             return True
         return False
     
-    async def assign(self, task_id: UUID, assignee_id: UUID, user_id: UUID) -> Optional[Task]:
+    async def assign(self, task_id: str, assignee_id: str, user_id: str) -> Optional[Task]:
         """Assign a task to a user"""
         task = await self.get_by_id(task_id)
         if not task:
@@ -225,7 +225,7 @@ class TaskService:
     async def bulk_update(
         self,
         updates: List[dict],
-        user_id: UUID
+        user_id: str
     ) -> List[Task]:
         """Bulk update tasks (for Kanban drag/drop)"""
         updated_tasks = []
@@ -235,7 +235,7 @@ class TaskService:
             if not task_id_str:
                 continue
             
-            task_id = UUID(task_id_str)
+            task_id = task_id_str
             task = await self.get_by_id(task_id)
             if not task:
                 continue
@@ -253,7 +253,7 @@ class TaskService:
                 changes["position"] = update_item["position"]
                 
             if "epic_id" in update_item:
-                task.epic_id = UUID(update_item["epic_id"]) if update_item["epic_id"] else None
+                task.epic_id = update_item["epic_id"] if update_item["epic_id"] else None
                 changes["epic_id"] = update_item["epic_id"]
             
             if changes:
@@ -269,7 +269,7 @@ class TaskService:
             
         return updated_tasks
     
-    async def get_dependencies(self, task_id: UUID) -> List[Task]:
+    async def get_dependencies(self, task_id: str) -> List[Task]:
         """Get all dependency tasks"""
         task = await self.get_by_id(task_id)
         if not task or not task.dependencies:
@@ -280,7 +280,7 @@ class TaskService:
         )
         return list(result.scalars().all())
     
-    async def add_dependency(self, task_id: UUID, dependency_id: UUID, user_id: UUID) -> Optional[Task]:
+    async def add_dependency(self, task_id: str, dependency_id: str, user_id: str) -> Optional[Task]:
         """Add a dependency to a task"""
         task = await self.get_by_id(task_id)
         dependency = await self.get_by_id(dependency_id)
@@ -310,7 +310,7 @@ class TaskService:
         
         return task
     
-    async def remove_dependency(self, task_id: UUID, dependency_id: UUID, user_id: UUID) -> Optional[Task]:
+    async def remove_dependency(self, task_id: str, dependency_id: str, user_id: str) -> Optional[Task]:
         """Remove a dependency from a task"""
         task = await self.get_by_id(task_id)
         if not task:
@@ -335,7 +335,7 @@ class TaskService:
             
         return task
     
-    async def _get_next_position(self, epic_id: Optional[UUID]) -> int:
+    async def _get_next_position(self, epic_id: Optional[str]) -> int:
         """Get next position for a task in an epic"""
         if not epic_id:
             return 1000
@@ -349,7 +349,7 @@ class TaskService:
         max_position = result.scalar_one_or_none()
         return (max_position or 0) + 1000
     
-    async def _has_circular_dependency(self, task_id: UUID, new_dep_id: UUID) -> bool:
+    async def _has_circular_dependency(self, task_id: str, new_dep_id: str) -> bool:
         """Check if adding dependency would create a circular reference"""
         visited = set()
         queue = [new_dep_id]
@@ -366,7 +366,7 @@ class TaskService:
             task = await self.get_by_id(current_id)
             if task and task.dependencies:
                 for dep_id in task.dependencies:
-                    queue.append(UUID(str(dep_id)))
+                    queue.append(dep_id)
         
         return False
 

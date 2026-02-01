@@ -177,7 +177,18 @@ class WorkspaceService:
         self.db.add(member)
         await self.db.commit()
         await self.db.refresh(workspace)
+        await self.db.refresh(workspace)
         return workspace
+
+    async def is_member(self, user_id: str, workspace_id: str) -> bool:
+        """Check if user is a member of the workspace"""
+        from sqlalchemy import and_
+        result = await self.db.execute(
+            select(Member).where(
+                and_(Member.workspace_id == workspace_id, Member.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none() is not None
 
     def _generate_invite_code(self, length: int = 6) -> str:
         """Generate a random alphanumeric invite code"""

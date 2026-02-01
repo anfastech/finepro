@@ -18,7 +18,6 @@ import { TaskActions } from "./task-actions";
 const getStatusIcon = (status: TaskStatus) => {
   switch (status) {
     case TaskStatus.TODO:
-    case TaskStatus.BACKLOG:
       return <Mail className="size-4" />;
     case TaskStatus.IN_PROGRESS:
       return <Rocket className="size-4" />;

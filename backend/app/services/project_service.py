@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from uuid import UUID
+
 
 from app.models.project import Project
 from app.models.member import Member
@@ -21,7 +21,7 @@ class ProjectService:
         self.db = db
         self.activity_service = ActivityService(db)
     
-    async def get_by_id(self, project_id: UUID) -> Optional[Project]:
+    async def get_by_id(self, project_id: str) -> Optional[Project]:
         """Get project by ID with relationships"""
         result = await self.db.execute(
             select(Project)
@@ -30,7 +30,7 @@ class ProjectService:
         )
         return result.scalar_one_or_none()
     
-    async def get_by_workspace(self, workspace_id: UUID) -> List[Project]:
+    async def get_by_workspace(self, workspace_id: str) -> List[Project]:
         """Get all projects in a workspace"""
         result = await self.db.execute(
             select(Project)
@@ -41,9 +41,9 @@ class ProjectService:
     
     async def create(
         self,
-        workspace_id: UUID,
+        workspace_id: str,
         data: ProjectCreate,
-        user_id: UUID
+        user_id: str
     ) -> Project:
         """Create a new project"""
         project = Project(
@@ -70,7 +70,7 @@ class ProjectService:
         
         return project
     
-    async def update(self, project_id: UUID, data: ProjectUpdate, user_id: UUID) -> Optional[Project]:
+    async def update(self, project_id: str, data: ProjectUpdate, user_id: str) -> Optional[Project]:
         """Update a project"""
         project = await self.get_by_id(project_id)
         if not project:
@@ -94,7 +94,7 @@ class ProjectService:
         
         return project
     
-    async def delete(self, project_id: UUID, user_id: UUID) -> bool:
+    async def delete(self, project_id: str, user_id: str) -> bool:
         """Delete a project"""
         result = await self.db.execute(
             delete(Project).where(Project.id == project_id)
@@ -114,8 +114,8 @@ class ProjectService:
     
     async def verify_access(
         self,
-        project_id: UUID,
-        user_id: UUID
+        project_id: str,
+        user_id: str
     ) -> bool:
         """Verify user has access to project via workspace membership"""
         project = await self.get_by_id(project_id)

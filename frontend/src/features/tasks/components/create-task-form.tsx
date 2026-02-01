@@ -24,30 +24,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
- } from "@/components/ui/select";
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
- import { TaskStatus } from "../types";
+import { TaskStatus } from "../types";
 import { createTaskSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
-  projectOptions: { id: string, name: string, imageUrl: string  }[];
+  projectOptions: { id: string, name: string, imageUrl: string }[];
   memberOptions: { id: string, name: string; avatarColor?: { bg: string; text: string } }[];
 }
 
-export const CreateTaskForm = ({ 
+export const CreateTaskForm = ({
   onCancel,
   projectOptions,
   memberOptions,
- }: CreateTaskFormProps) => {
+}: CreateTaskFormProps) => {
   const workspaceId = useWorkspaceId();
   const { mutate, isPending } = useCreateTask();
 
@@ -56,18 +56,27 @@ export const CreateTaskForm = ({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
       workspaceId,
+      name: "",
+      status: TaskStatus.TODO,
+      projectId: "",
+      assigneeId: "",
+      description: "",
+      startTime: "",
+      endTime: "",
+      priority: "medium",
+      isUrgent: false,
     },
   });
 
   const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
 
     mutate(
-      { json: {...values, workspaceId } }, {
-        onSuccess: () => {
-          form.reset();
-          onCancel?.();
-        },
-      }
+      { json: { ...values, workspaceId } }, {
+      onSuccess: () => {
+        form.reset();
+        onCancel?.();
+      },
+    }
     );
   };
 
@@ -132,8 +141,8 @@ export const CreateTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        {memberOptions.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                        {memberOptions.map((member, index) => (
+                          <SelectItem key={`${member.id}-${index}`} value={member.id}>
                             <div className="flex items-center gap-x-2">
                               <MemberAvatar
                                 className="size-6"
@@ -168,7 +177,6 @@ export const CreateTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        <SelectItem value={TaskStatus.BACKLOG}>Backlog</SelectItem>
                         <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
                         <SelectItem value={TaskStatus.IN_REVIEW}>In Review</SelectItem>
                         <SelectItem value={TaskStatus.TODO}>Todo</SelectItem>
@@ -197,8 +205,8 @@ export const CreateTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        {projectOptions.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
+                        {projectOptions.map((project, index) => (
+                          <SelectItem key={`${project.id}-${index}`} value={project.id}>
                             <div className="flex items-center gap-x-2">
                               <ProjectAvatar
                                 className="size-6"
@@ -222,9 +230,9 @@ export const CreateTaskForm = ({
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           placeholder="HH:mm"
                         />
                       </FormControl>
@@ -239,9 +247,9 @@ export const CreateTaskForm = ({
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           placeholder="HH:mm"
                         />
                       </FormControl>
@@ -257,8 +265,8 @@ export const CreateTaskForm = ({
                   <FormItem>
                     <FormLabel>Duration (hours)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         step="0.25"
                         min="0"
                         {...field}
@@ -279,8 +287,8 @@ export const CreateTaskForm = ({
                     <FormItem>
                       <FormLabel>Total Subtasks</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="0"
                           {...field}
                           value={field.value || ""}
@@ -299,8 +307,8 @@ export const CreateTaskForm = ({
                     <FormItem>
                       <FormLabel>Completed Subtasks</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="0"
                           {...field}
                           value={field.value || ""}
@@ -330,10 +338,10 @@ export const CreateTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        <SelectItem value="ASAP">ASAP</SelectItem>
-                        <SelectItem value="HIGH">High</SelectItem>
-                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                        <SelectItem value="LOW">Low</SelectItem>
+                        <SelectItem value="critical">ASAP</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>

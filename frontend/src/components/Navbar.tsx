@@ -1,15 +1,23 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, Search, LayoutGrid, Filter, Plus } from "lucide-react";
+import { Search, LayoutGrid, Filter, Plus } from "lucide-react";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { UserBtn } from "@/features/auth/components/UserBtn";
 import { Button } from "./ui/button";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useCreateTaskModel } from "@/features/tasks/hooks/use-create-task-modal";
+import { NotificationBell } from "@/components/notifications";
+import { ConnectionStatus, PresenceAvatar } from "@/components/presence";
+import { useConnectionStatus, useRealtime } from "@/contexts/realtime-context";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const pathnameMap = {
     "tasks": {
@@ -33,6 +41,8 @@ export const Navbar = () => {
     const workspaceId = useWorkspaceId();
     const { data: members } = useGetMembers({ workspaceId });
     const { open: openCreateTask } = useCreateTaskModel();
+    const { isConnected, connectionError } = useConnectionStatus();
+    const { presenceUsers } = useRealtime();
 
     const pathnameKey = pathnameParts[3] as keyof typeof pathnameMap;
     const { title, description } = pathnameMap[pathnameKey] || defaultMap;
@@ -48,7 +58,7 @@ export const Navbar = () => {
                 <Button variant="ghost" size="sm" className="hidden lg:flex">
                     Tools
                 </Button>
-                <Button 
+                <Button
                     onClick={openCreateTask}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
@@ -58,6 +68,15 @@ export const Navbar = () => {
             </div>
 
             <div className="flex items-center gap-3">
+                {/* Connection status indicator */}
+                <div className="hidden lg:flex items-center">
+                    <ConnectionStatus
+                        isConnected={isConnected}
+                        error={connectionError}
+                        showLabel={false}
+                    />
+                </div>
+
                 <div className="hidden lg:flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-9 w-9">
                         <Search className="size-4" />
@@ -70,42 +89,53 @@ export const Navbar = () => {
                     </Button>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-2 -space-x-2">
-                    {displayMembers.map((member: any) => (
-                        <div key={member.$id} className="size-8 -ml-3 rounded-full border-2 border-white overflow">
-                            <MemberAvatar
-                                className="size-8"
-                                name={member.name || member.email || ""}
-                                avatarColor={member.avatarColor}
-                            />
-                        </div>
-                    ))}
-                    {remainingCount > 0 && (
-                        <div className="size-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
-                            +{remainingCount}
-                        </div>
-                    )}
-                </div>
-
-                <div className="relative">
-                    <Button variant="ghost" size="icon" className="relative h-9 w-9">
-                        <Bell className="size-5" />
-                        {members && members.total > 0 && (
-                            <span className="absolute hidden top-0 right-0 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                                12
-                            </span>
+                {/* Team presence avatars */}
+                <TooltipProvider>
+                    <div className="hidden lg:flex items-center gap-2 -space-x-2">
+                        {displayMembers.map((member: any, index: number) => (
+                            <Tooltip key={member.$id}>
+                                <TooltipTrigger asChild>
+                                    <div
+                                        className="ring-2 ring-white rounded-full"
+                                        style={{ zIndex: displayMembers.length - index }}
+                                    >
+                                        <PresenceAvatar
+                                            name={member.name || member.email || ""}
+                                            avatarColor={member.avatarColor?.bg || member.avatar_color?.bg || "#3b82f6"}
+                                            size="xs"
+                                            showStatus={true}
+                                            status={presenceUsers.get(member.userId || member.user_id)?.status || 'offline'}
+                                        />
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="font-medium">{member.name || member.email}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
+                        {remainingCount > 0 && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div
+                                        className="size-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[10px] font-medium text-gray-600"
+                                        style={{ zIndex: 0 }}
+                                    >
+                                        +{remainingCount}
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{remainingCount} more team members</p>
+                                </TooltipContent>
+                            </Tooltip>
                         )}
-                    </Button>
-                </div>
+                    </div>
+                </TooltipProvider>
 
-                <div className="relative">
-                    <UserBtn />
-                    {members && members.total > 0 && (
-                        <span className="absolute hidden -top-1 -right-1 size-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                            2
-                        </span>
-                    )}
-                </div>
+                {/* Notification bell */}
+                <NotificationBell />
+
+                {/* User button */}
+                <UserBtn />
             </div>
         </div>
     )

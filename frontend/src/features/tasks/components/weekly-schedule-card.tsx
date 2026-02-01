@@ -58,7 +58,7 @@ const formatDuration = (hours?: number): string => {
   if (!hours) return "";
   const wholeHours = Math.floor(hours);
   const minutes = Math.round((hours - wholeHours) * 60);
-  
+
   if (minutes === 0) {
     return `${wholeHours}h`;
   }
@@ -80,7 +80,7 @@ const getDaysLeft = (dueDate: string): number | null => {
 
 export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCardProps) => {
   const colorClass = getTaskColor(task);
-  
+
   // Time range display
   let timeDisplay = "";
   if (task.startTime && task.endTime) {
@@ -88,23 +88,23 @@ export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCar
   } else if (task.startTime) {
     timeDisplay = task.startTime;
   }
-  
+
   // Duration display
   const durationDisplay = task.duration ? formatDuration(task.duration) : "";
-  
+
   // Progress indicator
   const showProgress = task.totalSubtasks !== undefined && task.totalSubtasks > 0;
-  const progressDisplay = showProgress 
-    ? `${task.completedSubtasks || 0}/${task.totalSubtasks}` 
+  const progressDisplay = showProgress
+    ? `${task.completedSubtasks || 0}/${task.totalSubtasks}`
     : "";
-  
+
   // Priority/ASAP badge
-  const showASAP = task.priority === "ASAP" || task.isUrgent;
-  
+  const showASAP = task.priority === "critical" || task.isUrgent;
+
   // Days left indicator
   const daysLeft = task.dueDate ? getDaysLeft(task.dueDate) : null;
   const showDaysLeft = daysLeft !== null && daysLeft >= 0;
-  
+
   // Determine days left badge color
   const getDaysLeftColor = (days: number) => {
     if (days <= 1) return "bg-red-100 text-red-700";
@@ -127,10 +127,10 @@ export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCar
             {timeDisplay}
           </div>
         )}
-        
+
         {/* Task name */}
         <div className="font-medium line-clamp-2 text-gray-900 text-xs leading-tight">{task.name}</div>
-        
+
         {/* Project information - moved up before badges */}
         {task.project && (
           <div className="flex items-center gap-1 mt-0.5">
@@ -145,7 +145,7 @@ export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCar
             </span>
           </div>
         )}
-        
+
         {/* Badges row: ASAP, Progress, Days left */}
         <div className="flex items-center gap-1 flex-wrap mt-0.5">
           {showASAP && (
@@ -167,7 +167,7 @@ export const WeeklyScheduleCard = ({ task, showTime = false }: WeeklyScheduleCar
             </span>
           )}
         </div>
-        
+
         {/* Duration */}
         {durationDisplay && (
           <div className="text-[10px] text-gray-600 font-medium mt-0.5">

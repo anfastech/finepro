@@ -12,6 +12,14 @@ interface CreateTaskRequest {
         projectId: string;
         dueDate: Date;
         assigneeId: string;
+        description?: string;
+        priority?: string;
+        duration?: number;
+        startTime?: string;
+        endTime?: string;
+        totalSubtasks?: number;
+        completedSubtasks?: number;
+        isUrgent?: boolean;
     }
 }
 
@@ -24,15 +32,39 @@ export const useCreateTask = () => {
         CreateTaskRequest
     >({
         mutationFn: async ({ json }) => {
-            const { projectId, name, status, assigneeId, dueDate } = json;
+            const {
+                projectId,
+                name,
+                status,
+                assigneeId,
+                dueDate,
+                description,
+                priority,
+                duration,
+                startTime,
+                endTime,
+                totalSubtasks,
+                completedSubtasks,
+                isUrgent
+            } = json;
 
             if (!projectId) throw new Error("Project ID is required");
 
             const response = await api.post<any>(`/projects/${projectId}/tasks`, {
                 title: name,
+                description,
                 status: status,
+                priority,
                 assigned_to: assigneeId,
                 due_date: dueDate ? dueDate.toISOString() : null,
+                estimated_hours: duration,
+                additional_data: {
+                    startTime,
+                    endTime,
+                    totalSubtasks,
+                    completedSubtasks,
+                    isUrgent
+                }
             });
 
             // Adapt backend response to frontend format

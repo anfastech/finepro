@@ -5,7 +5,7 @@ REST endpoints for managing real-time notifications
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -40,7 +40,7 @@ class BulkNotificationAction(BaseModel):
 
 # ==================== NOTIFICATION MANAGEMENT ENDPOINTS ====================
 
-@router.get("/notifications")
+@router.get("/")
 async def get_user_notifications(
     unread_only: bool = Query(False, description="Get only unread notifications"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of notifications"),
@@ -73,7 +73,7 @@ async def get_user_notifications(
         }
     }
 
-@router.get("/notifications/stats")
+@router.get("/stats")
 async def get_notification_stats(
     current_user: User = Depends(get_current_user)
 ):
@@ -87,7 +87,7 @@ async def get_notification_stats(
         "data": stats
     }
 
-@router.patch("/notifications/{notification_id}/read")
+@router.patch("/{notification_id}/read")
 async def mark_notification_read(
     notification_id: str,
     current_user: User = Depends(get_current_user)
@@ -111,7 +111,7 @@ async def mark_notification_read(
         "message": "Notification marked as read"
     }
 
-@router.patch("/notifications/read-all")
+@router.patch("/read-all")
 async def mark_all_notifications_read(
     current_user: User = Depends(get_current_user)
 ):
@@ -125,7 +125,7 @@ async def mark_all_notifications_read(
         "message": "All notifications marked as read"
     }
 
-@router.post("/notifications/bulk-action")
+@router.post("/bulk-action")
 async def bulk_notification_action(
     action_data: BulkNotificationAction,
     background_tasks: BackgroundTasks,
@@ -180,7 +180,7 @@ async def bulk_notification_action(
 
 # ==================== NOTIFICATION PREFERENCES ENDPOINTS ====================
 
-@router.get("/notifications/preferences")
+@router.get("/preferences")
 async def get_notification_preferences(
     current_user: User = Depends(get_current_user)
 ):
@@ -205,7 +205,7 @@ async def get_notification_preferences(
         "data": preferences
     }
 
-@router.put("/notifications/preferences")
+@router.put("/preferences")
 async def update_notification_preferences(
     preferences: NotificationPreferences,
     current_user: User = Depends(get_current_user)
@@ -224,7 +224,7 @@ async def update_notification_preferences(
         "data": preferences.dict()
     }
 
-@router.post("/notifications/test")
+@router.post("/test")
 async def test_notifications(
     background_tasks: BackgroundTasks,
     notification_type: str = Query(..., description="Type of notification to test"),
@@ -312,7 +312,7 @@ async def test_notifications(
 
 # ==================== NOTIFICATION SUBSCRIPTION ENDPOINTS ====================
 
-@router.post("/notifications/subscribe/{notification_type}")
+@router.post("/subscribe/{notification_type}")
 async def subscribe_to_notification_type(
     notification_type: str,
     current_user: User = Depends(get_current_user)
@@ -346,7 +346,7 @@ async def subscribe_to_notification_type(
         "message": f"Subscribed to {notification_type} notifications"
     }
 
-@router.delete("/notifications/subscribe/{notification_type}")
+@router.delete("/subscribe/{notification_type}")
 async def unsubscribe_from_notification_type(
     notification_type: str,
     current_user: User = Depends(get_current_user)
@@ -382,7 +382,7 @@ async def unsubscribe_from_notification_type(
 
 # ==================== NOTIFICATION TEMPLATES ENDPOINTS ====================
 
-@router.get("/notifications/templates")
+@router.get("/templates")
 async def get_notification_templates(
     current_user: User = Depends(get_current_user)
 ):
@@ -463,7 +463,7 @@ async def get_notification_templates(
         "data": templates
     }
 
-@router.delete("/notifications/clear")
+@router.delete("/clear")
 async def clear_all_notifications(
     current_user: User = Depends(get_current_user)
 ):

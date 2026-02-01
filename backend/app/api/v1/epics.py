@@ -4,7 +4,7 @@ Epic API Endpoints - CRUD operations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import UUID
+
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/projects/{project_id}", response_model=List[EpicResponse])
 async def list_project_epics(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -27,7 +27,7 @@ async def list_project_epics(
     return epics
 
 
-@router.post("/", response_model=EpicResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/epics/", response_model=EpicResponse, status_code=status.HTTP_201_CREATED)
 async def create_epic(
     epic_data: EpicCreate,
     db: AsyncSession = Depends(get_db),
@@ -39,9 +39,9 @@ async def create_epic(
     return epic
 
 
-@router.get("/{epic_id}", response_model=EpicResponse)
+@router.get("/epics/{epic_id}", response_model=EpicResponse)
 async def get_epic(
-    epic_id: UUID,
+    epic_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -53,9 +53,9 @@ async def get_epic(
     return epic
 
 
-@router.patch("/{epic_id}", response_model=EpicResponse)
+@router.patch("/epics/{epic_id}", response_model=EpicResponse)
 async def update_epic(
-    epic_id: UUID,
+    epic_id: str,
     epic_data: EpicUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -68,9 +68,9 @@ async def update_epic(
     return epic
 
 
-@router.delete("/{epic_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/epics/{epic_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_epic(
-    epic_id: UUID,
+    epic_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

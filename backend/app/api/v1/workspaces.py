@@ -15,7 +15,7 @@ from app.services.member_service import MemberService
 router = APIRouter()
 
 
-@router.get("/", response_model=List[WorkspaceResponse])
+@router.get("/workspaces/", response_model=List[WorkspaceResponse])
 async def list_workspaces(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -26,7 +26,7 @@ async def list_workspaces(
     return workspaces
 
 
-@router.post("/", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/workspaces/", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
 async def create_workspace(
     workspace_data: WorkspaceCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -56,7 +56,7 @@ async def create_workspace(
     return workspace
 
 
-@router.get("/{workspace_id}", response_model=WorkspaceResponse)
+@router.get("/workspaces/{workspace_id}", response_model=WorkspaceResponse)
 async def get_workspace(
     workspace_id: str,
     db: AsyncSession = Depends(get_db),
@@ -78,7 +78,7 @@ async def get_workspace(
     return workspace
 
 
-@router.patch("/{workspace_id}", response_model=WorkspaceResponse)
+@router.patch("/workspaces/{workspace_id}", response_model=WorkspaceResponse)
 async def update_workspace(
     workspace_id: str,
     workspace_data: WorkspaceUpdate,
@@ -112,7 +112,7 @@ async def update_workspace(
     return workspace
 
 
-@router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/workspaces/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workspace(
     workspace_id: str,
     db: AsyncSession = Depends(get_db),
@@ -142,7 +142,7 @@ async def delete_workspace(
     return None
 
 
-@router.get("/{workspace_id}/analytics")
+@router.get("/workspaces/{workspace_id}/analytics")
 async def get_workspace_analytics(
     workspace_id: str,
     db: AsyncSession = Depends(get_db),
@@ -161,7 +161,7 @@ async def get_workspace_analytics(
     return {"data": analytics}
 
 
-@router.get("/{workspace_id}/info", response_model=WorkspaceResponse)
+@router.get("/workspaces/{workspace_id}/info", response_model=WorkspaceResponse)
 async def get_workspace_info(
     workspace_id: str,
     db: AsyncSession = Depends(get_db),
@@ -176,7 +176,7 @@ async def get_workspace_info(
     return workspace
 
 
-@router.post("/{workspace_id}/join", response_model=WorkspaceResponse)
+@router.post("/workspaces/{workspace_id}/join", response_model=WorkspaceResponse)
 async def join_workspace(
     workspace_id: str,
     invite_code: str = Query(..., alias="inviteCode"),
@@ -192,7 +192,7 @@ async def join_workspace(
     return workspace
 
 
-@router.post("/{workspace_id}/reset-invite-code", response_model=WorkspaceResponse)
+@router.post("/workspaces/{workspace_id}/reset-invite-code", response_model=WorkspaceResponse)
 async def reset_invite_code(
     workspace_id: str,
     db: AsyncSession = Depends(get_db),

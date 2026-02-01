@@ -68,7 +68,7 @@ export const EditTaskForm = ({
 
   const onSubmit = (values: z.infer<typeof schema>) => {
     mutate(
-      { json: values, param: { taskId: initialValues.$id } },
+      { json: values, param: { taskId: initialValues.id } },
       {
         onSuccess: () => {
           form.reset();
@@ -133,8 +133,8 @@ export const EditTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        {memberOptions.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                        {memberOptions.map((member, index) => (
+                          <SelectItem key={`${member.id}-${index}`} value={member.id}>
                             <div className="flex items-center gap-x-2">
                               <MemberAvatar
                                 className="size-6"
@@ -167,9 +167,6 @@ export const EditTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        <SelectItem value={TaskStatus.BACKLOG}>
-                          Backlog
-                        </SelectItem>
                         <SelectItem value={TaskStatus.IN_PROGRESS}>
                           In Progress
                         </SelectItem>
@@ -200,8 +197,8 @@ export const EditTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        {projectOptions.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
+                        {projectOptions.map((project, index) => (
+                          <SelectItem key={`${project.id}-${index}`} value={project.id}>
                             <div className="flex items-center gap-x-2">
                               <ProjectAvatar
                                 className="size-6"
@@ -225,9 +222,9 @@ export const EditTaskForm = ({
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           placeholder="HH:mm"
                         />
                       </FormControl>
@@ -242,9 +239,9 @@ export const EditTaskForm = ({
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           placeholder="HH:mm"
                         />
                       </FormControl>
@@ -260,8 +257,8 @@ export const EditTaskForm = ({
                   <FormItem>
                     <FormLabel>Duration (hours)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         step="0.25"
                         min="0"
                         {...field}
@@ -282,8 +279,8 @@ export const EditTaskForm = ({
                     <FormItem>
                       <FormLabel>Total Subtasks</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="0"
                           {...field}
                           value={field.value || ""}
@@ -302,8 +299,8 @@ export const EditTaskForm = ({
                     <FormItem>
                       <FormLabel>Completed Subtasks</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
+                        <Input
+                          type="number"
                           min="0"
                           {...field}
                           value={field.value || ""}
@@ -333,10 +330,10 @@ export const EditTaskForm = ({
                       </FormControl>
                       <FormMessage />
                       <SelectContent>
-                        <SelectItem value="ASAP">ASAP</SelectItem>
-                        <SelectItem value="HIGH">High</SelectItem>
-                        <SelectItem value="MEDIUM">Medium</SelectItem>
-                        <SelectItem value="LOW">Low</SelectItem>
+                        <SelectItem value="critical">ASAP</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>

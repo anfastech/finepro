@@ -13,7 +13,7 @@ import { KanbanCard } from "./kanban-card";
 
 // Map design columns to task statuses
 const columnStatusMap: Record<string, TaskStatus[]> = {
-  "new-task": [TaskStatus.BACKLOG, TaskStatus.TODO],
+  "new-task": [TaskStatus.TODO],
   "scheduled": [TaskStatus.IN_REVIEW],
   "in-progress": [TaskStatus.IN_PROGRESS],
   "completed": [TaskStatus.DONE],
@@ -193,17 +193,17 @@ export const DataKanban = ({ data, onChange }: DataKanbanProps) => {
                       </div>
                     ) : (
                       columnTasks.map((task, index) => (
-                      <Draggable key={task.$id} draggableId={task.$id} index={index}>
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                          >
-                            <KanbanCard task={task} />
-                          </div>
-                        )}
-                      </Draggable>
+                        <Draggable key={task.$id} draggableId={task.$id} index={index}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <KanbanCard task={task} />
+                            </div>
+                          )}
+                        </Draggable>
                       ))
                     )}
                     {provided.placeholder}

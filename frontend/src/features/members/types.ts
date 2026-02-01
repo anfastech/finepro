@@ -14,7 +14,8 @@ interface Document {
     $sequence?: string;
 }
 
-export type Member = Document & {
+export type Member = {
+    id: string;
     workspace_id: string;
     user_id: string;
     role: MemberRole;
@@ -24,9 +25,14 @@ export type Member = Document & {
         bg: string;
         text: string;
     };
-    // For backward compatibility
-    workspaceId: string;
-    userId: string;
+    created_at?: string;
+    updated_at?: string;
+    // Legacy support
+    $id?: string;
+    $createdAt?: string;
+    $updatedAt?: string;
+    workspaceId?: string;
+    userId?: string;
     avatarColor?: {
         bg: string;
         text: string;

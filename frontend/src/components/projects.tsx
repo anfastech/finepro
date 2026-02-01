@@ -42,7 +42,7 @@ export const Projects = () => {
 
     data.documents.forEach((project) => {
       const name = project.name;
-      
+
       // Check if project name suggests it's part of a folder
       // Pattern: "Parent Name" > "Child Name" or common prefixes
       if (name.includes("Website Development") || name.includes("Website Translation")) {
@@ -85,11 +85,11 @@ export const Projects = () => {
   };
 
   const renderProject = (project: Project, isNested = false) => {
-    const href = `/workspaces/${workspaceId}/projects/${project.$id}`;
+    const href = `/workspaces/${workspaceId}/projects/${project.id}`;
     const isActive = pathname === href;
 
     return (
-      <Link href={href} key={project.$id}>
+      <Link href={href} key={project.id}>
         <div
           className={cn(
             "flex items-center gap-2.5 p-2.5 rounded-md transition-all duration-200 cursor-pointer",
@@ -98,7 +98,7 @@ export const Projects = () => {
             isNested && "pl-8"
           )}
         >
-          <ProjectAvatar className="size-6" image={project.imageUrl} name={project.name} />
+          <ProjectAvatar className="size-6" image={project.imageUrl || project.image_url} name={project.name} />
           <span className="truncate text-sm">{project.name}</span>
         </div>
       </Link>
@@ -110,7 +110,7 @@ export const Projects = () => {
       <div className="flex flex-col gap-y-2">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs uppercase text-neutral-400">PROJECTS</p>
-          <RiAddCircleFill onClick={open} className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition"/>
+          <RiAddCircleFill onClick={open} className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition" />
         </div>
         <div className="text-xs text-neutral-400 py-2 px-2.5">
           No projects yet. Click + to create one.
@@ -123,9 +123,9 @@ export const Projects = () => {
     <div className="flex flex-col gap-y-1">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase text-neutral-400">PROJECTS</p>
-        <RiAddCircleFill onClick={open} className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition"/>
+        <RiAddCircleFill onClick={open} className="size-5 text-neutral-400 cursor-pointer hover:opacity-75 transition" />
       </div>
-      
+
       {/* Folders */}
       {folders.map((folder) => {
         const isExpanded = expandedFolders.has(folder.id);

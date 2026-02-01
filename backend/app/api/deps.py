@@ -106,13 +106,13 @@ async def verify_supabase_auth(
     
     # Check if user exists in our database
     from sqlalchemy import select
-    result = await db.execute(select(User).where(User.auth_id == user_data["user_id"]))
+    result = await db.execute(select(User).where(User.supabase_id == user_data["user_id"]))
     user = result.scalar_one_or_none()
     
     # Create user if doesn't exist
     if user is None:
         user = User(
-            auth_id=user_data["user_id"],
+            supabase_id=user_data["user_id"],
             email=user_data["email"],
             name=user_data["name"],
         )
@@ -146,33 +146,42 @@ async def get_current_user_ws(
 ) -> Optional[User]:
     """
     Get the current authenticated user from WebSocket token
+    Supports both internal and Supabase tokens.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
     try:
+        logger.info(f"get_current_user_ws: Authenticating with token starting with {token[:15]}...")
+        
+        # 1. Try to verify as our own token
         token_data: Optional[TokenData] = verify_token(token)
-        if token_data is None:
+        user_id = token_data.user_id if token_data else None
+        
+        # 2. If not our token, try verify as Supabase token
+        if not user_id:
+            logger.info("get_current_user_ws: Internal token verification failed, trying Supabase...")
+            user_data = await verify_supabase_token(token)
+            user_id = user_data.get("user_id") if user_data else None
+            
+        if not user_id:
+            logger.warning("get_current_user_ws: Token verification failed (both internal and Supabase)")
             return None
-    except Exception:
-        return None
-    
-    # Get user from database - we need to use the database from websocket state
-    # For WebSocket, we'll use the AsyncSessionLocal directly
-    try:
+
+        logger.info(f"get_current_user_ws: Token verified. Looking up user_id: {user_id}")
+
+        # Get user from database
         from app.database import AsyncSessionLocal
         from sqlalchemy import select
         
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(User).where(User.auth_id == token_data.user_id))
+            result = await db.execute(select(User).where(User.supabase_id == user_id))
             user = result.scalar_one_or_none()
             
-            if user is None:
+            if user:
+                logger.info(f"get_current_user_ws: Auth successful for user {user.email}")
+                return user
+            else:
+                logger.warning(f"get_current_user_ws: User {user_id} not found in DB")
                 return None
-            
-            return user
-    except Exception:
+                
+    except Exception as e:
+        logger.error(f"Error in get_current_user_ws: {e}", exc_info=True)
         return None

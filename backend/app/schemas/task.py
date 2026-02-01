@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from uuid import UUID
+
 
 from ..models.enums import Priority, TaskType, TaskStatus
 from typing import TYPE_CHECKING
@@ -18,7 +18,7 @@ class TaskBase(BaseModel):
     priority: Priority = Priority.MEDIUM
     estimated_hours: Optional[float] = None
     due_date: Optional[datetime] = None
-    dependencies: List[UUID] = []
+    dependencies: List[str] = []
     tags: List[str] = []
     ai_confidence: Optional[float] = None
     additional_data: Dict[str, Any] = {}
@@ -27,15 +27,15 @@ class TaskBase(BaseModel):
 
 
 class TaskCreateRequest(TaskBase):
-    epic_id: Optional[UUID] = None
-    assigned_to: Optional[UUID] = None
+    epic_id: Optional[str] = None
+    assigned_to: Optional[str] = None
     # created_by is inferred from current_user
 
 
 class TaskCreate(TaskBase):
-    epic_id: Optional[UUID] = None
-    assigned_to: Optional[UUID] = None
-    created_by: UUID
+    epic_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    created_by: str
 
 
 class TaskUpdate(BaseModel):
@@ -44,12 +44,12 @@ class TaskUpdate(BaseModel):
     task_type: Optional[TaskType] = None
     status: Optional[TaskStatus] = None
     priority: Optional[Priority] = None
-    assigned_to: Optional[UUID] = None
+    assigned_to: Optional[str] = None
     estimated_hours: Optional[float] = None
     actual_hours: Optional[float] = None
     due_date: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    dependencies: Optional[List[UUID]] = None
+    dependencies: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     ai_confidence: Optional[float] = None
     additional_data: Optional[Dict[str, Any]] = None
@@ -59,10 +59,10 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    epic_id: Optional[UUID]
-    assigned_to: Optional[UUID]
-    created_by: UUID
+    id: str
+    epic_id: Optional[str]
+    assigned_to: Optional[str]
+    created_by: str
     actual_hours: float
     completed_at: Optional[datetime] = None
     created_at: datetime
@@ -75,7 +75,7 @@ class TaskWithComments(TaskResponse):
 
 
 class BulkTaskUpdateItem(BaseModel):
-    id: UUID
+    id: str
     position: int
     status: TaskStatus
 

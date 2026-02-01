@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from uuid import UUID
+
 
 from ..models.enums import ProjectStatus
 from typing import TYPE_CHECKING
@@ -26,8 +26,8 @@ class ProjectCreateRequest(ProjectBase):
 
 
 class ProjectCreate(ProjectBase):
-    workspace_id: UUID
-    created_by: UUID
+    workspace_id: str
+    created_by: str
 
 
 class ProjectUpdate(BaseModel):
@@ -45,9 +45,9 @@ class ProjectUpdate(BaseModel):
 class ProjectResponse(ProjectBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    workspace_id: UUID
-    created_by: UUID
+    id: str
+    workspace_id: str
+    created_by: str
     actual_end_date: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

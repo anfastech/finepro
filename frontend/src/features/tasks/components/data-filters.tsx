@@ -30,12 +30,12 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
     const isLoading = isLoadingProjects || isLoadingMembers;
 
     const projectOptions = projects?.documents.map((project) => ({
-        value: project.$id,
+        value: project.id,
         label: project.name
     }));
 
     const memberOptions = members?.documents.map((member: any) => ({
-        value: member.$id || member.id,
+        value: member.id,
         label: member.name
     }));
 
@@ -75,14 +75,13 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
                 <SelectContent>
                     <SelectItem value="all">All statuses</SelectItem>
                     <SelectSeparator />
-                    <SelectItem value={TaskStatus.BACKLOG}>Backlog</SelectItem>
                     <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
                     <SelectItem value={TaskStatus.IN_REVIEW}>In Review</SelectItem>
                     <SelectItem value={TaskStatus.TODO}>Todo</SelectItem>
                     <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
                 </SelectContent>
             </Select>
-            
+
             <Select
                 defaultValue={assigneeId ?? undefined}
                 onValueChange={(value) => onAssigneeChange(value)}

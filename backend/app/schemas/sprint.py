@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
-from uuid import UUID
+
 
 from ..models.enums import SprintStatus
 from typing import TYPE_CHECKING
@@ -18,7 +18,7 @@ class SprintBase(BaseModel):
 
 
 class SprintCreate(SprintBase):
-    project_id: UUID
+    project_id: str
 
 
 class SprintUpdate(BaseModel):
@@ -31,8 +31,8 @@ class SprintUpdate(BaseModel):
 class SprintResponse(SprintBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    project_id: UUID
+    id: str
+    project_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 

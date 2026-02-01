@@ -116,7 +116,8 @@ class WebSocketManager:
 
     async def connect(self, websocket: WebSocket, user_id: str, workspace_id: str, user_info: Dict[str, Any] = None) -> WSConnection:
         """Connect a new WebSocket client"""
-        await websocket.accept()
+        # Connection already accepted in the endpoint
+        # await websocket.accept()
         
         async with self._lock:
             # Create connection

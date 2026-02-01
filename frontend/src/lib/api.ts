@@ -66,8 +66,10 @@ export const api = {
             url += `?${searchParams.toString()}`;
         }
 
+        const isFormData = options.body instanceof FormData;
+
         const headers = {
-            "Content-Type": "application/json",
+            ...(isFormData ? {} : { "Content-Type": "application/json" }),
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(options.headers || {}),
         };
@@ -97,9 +99,10 @@ export const api = {
     },
 
     async post<T>(endpoint: string, body: any = {}, options: ApiOptions = {}): Promise<T> {
+        const isFormData = body instanceof FormData;
         return this.request<T>(endpoint, {
             method: "POST",
-            body: body ? JSON.stringify(body) : undefined,
+            body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
             ...options,
         });
     },

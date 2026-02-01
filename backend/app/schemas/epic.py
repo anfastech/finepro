@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from uuid import UUID
+
 
 from ..models.enums import Priority, EpicStatus
 from typing import TYPE_CHECKING
@@ -20,7 +20,7 @@ class EpicBase(BaseModel):
 
 
 class EpicCreate(EpicBase):
-    project_id: UUID
+    project_id: str
 
 
 class EpicUpdate(BaseModel):
@@ -36,8 +36,8 @@ class EpicUpdate(BaseModel):
 class EpicResponse(EpicBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: UUID
-    project_id: UUID
+    id: str
+    project_id: str
     actual_hours: float
     created_at: datetime
     updated_at: Optional[datetime] = None

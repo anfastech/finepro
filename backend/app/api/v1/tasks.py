@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -25,10 +25,10 @@ router = APIRouter()
 
 @router.get("/projects/{project_id}/tasks", response_model=List[TaskResponse])
 async def list_tasks(
-    project_id: UUID,
+    project_id: str,
     status: Optional[TaskStatus] = Query(None, description="Filter by status"),
     priority: Optional[Priority] = Query(None, description="Filter by priority"),
-    assigned_to: Optional[UUID] = Query(None, description="Filter by assignee"),
+    assigned_to: Optional[str] = Query(None, description="Filter by assignee"),
     search: Optional[str] = Query(None, description="Search in title/description"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -53,7 +53,7 @@ async def list_tasks(
 
 @router.post("/projects/{project_id}/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
-    project_id: UUID,
+    project_id: str,
     task_data: TaskCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -77,7 +77,7 @@ async def create_task(
     return task
 
 
-@router.post("/bulk-update", status_code=status.HTTP_200_OK)
+@router.post("/tasks/bulk-update", status_code=status.HTTP_200_OK)
 async def bulk_update_tasks(
     update_data: BulkTaskUpdate,
     db: AsyncSession = Depends(get_db),
@@ -105,7 +105,7 @@ async def bulk_update_tasks(
 
 @router.get("/projects/{project_id}/tasks/realtime-stats")
 async def get_project_task_stats(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -156,9 +156,9 @@ async def get_project_task_stats(
 
 # ==================== TASK CRUD ENDPOINTS ====================
 
-@router.get("/{task_id}", response_model=TaskWithComments)
+@router.get("/tasks/{task_id}", response_model=TaskWithComments)
 async def get_task(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -191,9 +191,9 @@ async def get_task(
     return task_dict
 
 
-@router.patch("/{task_id}", response_model=TaskResponse)
+@router.patch("/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
-    task_id: UUID,
+    task_id: str,
     task_data: TaskUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -229,9 +229,9 @@ async def update_task(
             detail=str(e)
         )
 
-@router.patch("/{task_id}/status", response_model=TaskResponse)
+@router.patch("/tasks/{task_id}/status", response_model=TaskResponse)
 async def change_task_status(
-    task_id: UUID,
+    task_id: str,
     new_status: TaskStatus,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -258,9 +258,9 @@ async def change_task_status(
         )
 
 
-@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -293,10 +293,10 @@ async def delete_task(
 
 # ==================== TASK ASSIGNMENT ====================
 
-@router.post("/{task_id}/assign", response_model=TaskResponse)
+@router.post("/tasks/{task_id}/assign", response_model=TaskResponse)
 async def assign_task(
-    task_id: UUID,
-    user_id: UUID = Query(..., description="User ID to assign task to"),
+    task_id: str,
+    user_id: str = Query(..., description="User ID to assign task to"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -347,9 +347,9 @@ async def bulk_update_tasks(
 
 # ==================== REAL-TIME INTERACTION ENDPOINTS ====================
 
-@router.post("/{task_id}/typing")
+@router.post("/tasks/{task_id}/typing")
 async def set_typing_indicator(
-    task_id: UUID,
+    task_id: str,
     is_typing: bool,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -371,9 +371,9 @@ async def set_typing_indicator(
     return {"message": "Typing indicator updated"}
 
 
-@router.post("/{task_id}/editing")
+@router.post("/tasks/{task_id}/editing")
 async def set_editing_status(
-    task_id: UUID,
+    task_id: str,
     is_editing: bool,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -395,9 +395,9 @@ async def set_editing_status(
     return {"message": "Editing status updated"}
 
 
-@router.get("/{task_id}/typers")
+@router.get("/tasks/{task_id}/typers")
 async def get_typing_users(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -413,9 +413,9 @@ async def get_typing_users(
     return {"typing_users": typing_users}
 
 
-@router.get("/{task_id}/editors")
+@router.get("/tasks/{task_id}/editors")
 async def get_editing_users(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -431,9 +431,9 @@ async def get_editing_users(
     return {"editing_users": editing_users}
 
 
-@router.post("/{task_id}/comments/realtime")
+@router.post("/tasks/{task_id}/comments/realtime")
 async def add_comment_realtime(
-    task_id: UUID,
+    task_id: str,
     comment_data: Dict[str, Any],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -467,9 +467,9 @@ async def add_comment_realtime(
         )
 
 
-@router.get("/{task_id}/activity-summary")
+@router.get("/tasks/{task_id}/activity-summary")
 async def get_task_activity_summary(
-    task_id: UUID,
+    task_id: str,
     hours: int = Query(24, description="Hours of activity to summarize"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -528,9 +528,9 @@ async def get_task_activity_summary(
 
 # ==================== REAL-TIME PRESENCE ENDPOINTS ====================
 
-@router.post("/{task_id}/viewing")
+@router.post("/tasks/{task_id}/viewing")
 async def start_viewing_task(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -560,9 +560,9 @@ async def start_viewing_task(
     return {"message": "Now viewing task", "task_id": str(task_id)}
 
 
-@router.delete("/{task_id}/viewing")
+@router.delete("/tasks/{task_id}/viewing")
 async def stop_viewing_task(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -581,9 +581,9 @@ async def stop_viewing_task(
 
 # ==================== DEPENDENCIES ====================
 
-@router.get("/{task_id}/dependencies", response_model=List[TaskResponse])
+@router.get("/tasks/{task_id}/dependencies", response_model=List[TaskResponse])
 async def get_task_dependencies(
-    task_id: UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -595,10 +595,10 @@ async def get_task_dependencies(
     return dependencies
 
 
-@router.post("/{task_id}/dependencies/{dependency_id}", response_model=TaskResponse)
+@router.post("/tasks/{task_id}/dependencies/{dependency_id}", response_model=TaskResponse)
 async def add_task_dependency(
-    task_id: UUID,
-    dependency_id: UUID,
+    task_id: str,
+    dependency_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -623,10 +623,10 @@ async def add_task_dependency(
     return task
 
 
-@router.delete("/{task_id}/dependencies/{dependency_id}", response_model=TaskResponse)
+@router.delete("/tasks/{task_id}/dependencies/{dependency_id}", response_model=TaskResponse)
 async def remove_task_dependency(
-    task_id: UUID,
-    dependency_id: UUID,
+    task_id: str,
+    dependency_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -649,7 +649,7 @@ async def remove_task_dependency(
 
 @router.get("/epics/{epic_id}/tasks", response_model=List[TaskResponse])
 async def list_tasks_by_epic(
-    epic_id: UUID,
+    epic_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

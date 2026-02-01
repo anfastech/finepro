@@ -39,6 +39,14 @@ def generate_epic_id() -> str:
     """Generate epic ID"""
     return generate_short_id(10)
 
+def generate_sprint_id() -> str:
+    """Generate sprint ID"""
+    return generate_short_id(10)
+
+def generate_comment_id() -> str:
+    """Generate comment ID"""
+    return generate_short_id(12)
+
 def generate_invite_code() -> str:
     """Generate workspace invite code"""
     characters = string.ascii_uppercase + string.digits

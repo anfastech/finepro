@@ -63,7 +63,7 @@ async def invite_member(
     return member
 
 
-@router.patch("/{member_id}", response_model=MemberResponse)
+@router.patch("/members/{member_id}", response_model=MemberResponse)
 async def update_member_role(
     member_id: str,
     member_data: MemberUpdate,
@@ -94,7 +94,7 @@ async def update_member_role(
     return updated_member
 
 
-@router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
     member_id: str,
     db: AsyncSession = Depends(get_db),

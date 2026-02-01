@@ -5,7 +5,7 @@ Provides endpoints for testing and monitoring real-time integration
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
-from uuid import UUID
+
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -14,7 +14,7 @@ from app.services.realtime_integration_manager import realtime_integration_manag
 
 router = APIRouter()
 
-@router.get("/integration/status")
+@router.get("/status")
 async def get_integration_status(
     current_user: User = Depends(get_current_user)
 ):
@@ -34,11 +34,11 @@ async def get_integration_status(
         "data": status
     }
 
-@router.post("/integration/trigger-event")
+@router.post("/trigger-event")
 async def trigger_test_event(
     event_type: str = "task_created",
-    task_id: UUID = None,
-    project_id: UUID = None,
+    task_id: str = None,
+    project_id: str = None,
     data: Dict[str, Any] = {},
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -79,7 +79,7 @@ async def trigger_test_event(
         }
     }
 
-@router.get("/integration/test-all-events")
+@router.get("/test-all-events")
 async def test_all_realtime_events(
     current_user: User = Depends(get_current_user)
 ):
@@ -157,7 +157,7 @@ async def test_all_realtime_events(
         }
     }
 
-@router.get("/integration/monitor-performance")
+@router.get("/monitor-performance")
 async def get_performance_metrics(
     hours: int = 1,  # Last N hours
     current_user: User = Depends(get_current_user)
@@ -217,9 +217,9 @@ async def get_performance_metrics(
         "data": performance_data
     }
 
-@router.post("/integration/sync-project/{project_id}")
+@router.post("/sync-project/{project_id}")
 async def sync_project_realtime(
-    project_id: UUID,
+    project_id: str,
     force_sync: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -264,7 +264,7 @@ async def sync_project_realtime(
         "data": sync_results
     }
 
-@router.get("/integration/frontend-readiness")
+@router.get("/frontend-readiness")
 async def check_frontend_readiness(
     current_user: User = Depends(get_current_user)
 ):

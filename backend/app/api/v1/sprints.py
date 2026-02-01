@@ -4,7 +4,7 @@ Sprint API Endpoints - CRUD and task assignment
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import UUID
+
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/projects/{project_id}", response_model=List[SprintResponse])
 async def list_project_sprints(
-    project_id: UUID,
+    project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -27,7 +27,7 @@ async def list_project_sprints(
     return sprints
 
 
-@router.post("/", response_model=SprintResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/sprints/", response_model=SprintResponse, status_code=status.HTTP_201_CREATED)
 async def create_sprint(
     sprint_data: SprintCreate,
     db: AsyncSession = Depends(get_db),
@@ -39,9 +39,9 @@ async def create_sprint(
     return sprint
 
 
-@router.get("/{sprint_id}", response_model=SprintResponse)
+@router.get("/sprints/{sprint_id}", response_model=SprintResponse)
 async def get_sprint(
-    sprint_id: UUID,
+    sprint_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -53,9 +53,9 @@ async def get_sprint(
     return sprint
 
 
-@router.patch("/{sprint_id}", response_model=SprintResponse)
+@router.patch("/sprints/{sprint_id}", response_model=SprintResponse)
 async def update_sprint(
-    sprint_id: UUID,
+    sprint_id: str,
     sprint_data: SprintUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -68,9 +68,9 @@ async def update_sprint(
     return sprint
 
 
-@router.delete("/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/sprints/{sprint_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_sprint(
-    sprint_id: UUID,
+    sprint_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -82,10 +82,10 @@ async def delete_sprint(
     return None
 
 
-@router.post("/{sprint_id}/tasks/{task_id}", status_code=status.HTTP_200_OK)
+@router.post("/sprints/{sprint_id}/tasks/{task_id}", status_code=status.HTTP_200_OK)
 async def add_task_to_sprint(
-    sprint_id: UUID,
-    task_id: UUID,
+    sprint_id: str,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -95,10 +95,10 @@ async def add_task_to_sprint(
     return {"message": "Task added to sprint"}
 
 
-@router.delete("/{sprint_id}/tasks/{task_id}", status_code=status.HTTP_200_OK)
+@router.delete("/sprints/{sprint_id}/tasks/{task_id}", status_code=status.HTTP_200_OK)
 async def remove_task_from_sprint(
-    sprint_id: UUID,
-    task_id: UUID,
+    sprint_id: str,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

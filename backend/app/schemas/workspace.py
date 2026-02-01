@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any, TYPE_CHECKING
 from datetime import datetime
-from uuid import UUID
+
 
 from ..models.enums import MemberRole
 

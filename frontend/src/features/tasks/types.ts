@@ -1,23 +1,13 @@
-// Legacy Document interface for backward compatibility
-interface Document {
-  $id: string;
-  $createdAt: string;
-  $updatedAt: string;
-  $collectionId: string;
-  $databaseId: string;
-  $permissions: any[];
-  $sequence?: string;
-}
-
 export enum TaskStatus {
-    BACKLOG = "BACKLOG",
-    TODO = "TODO",
-    IN_PROGRESS = "IN_PROGRESS",
-    IN_REVIEW = "IN_REVIEW",
-    DONE = "DONE" 
+    TODO = "todo",
+    IN_PROGRESS = "in_progress",
+    IN_REVIEW = "review",
+    DONE = "done",
+    BLOCKED = "blocked"
 };
 
-export type Task = Document & {
+export type Task = {
+    id: string;
     name: string;
     status: TaskStatus;
     workspaceId: string;
@@ -31,9 +21,11 @@ export type Task = Document & {
     duration?: number;
     totalSubtasks?: number;
     completedSubtasks?: number;
-    priority?: "ASAP" | "HIGH" | "MEDIUM" | "LOW";
+    priority?: "critical" | "high" | "medium" | "low";
     isUrgent?: boolean;
     teamId?: string;
+    created_at?: string;
+    updated_at?: string;
     project?: {
         name: string;
         imageUrl?: string;
@@ -46,4 +38,8 @@ export type Task = Document & {
             text: string;
         };
     };
+    // Legacy support
+    $id: string;
+    $createdAt: string;
+    $updatedAt: string;
 };

@@ -55,17 +55,17 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
     };
 
     mutate(
-      { form: finalValues },
+      finalValues,
       {
-        onSuccess: ({data}) => {
+        onSuccess: (data) => {
           form.reset();
-          router.push(`/workspaces/${workspaceId}/projects/${data.$id}`);
+          router.push(`/workspaces/${workspaceId}/projects/${data.id}`);
         },
       }
     );
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       form.setValue("image", file);

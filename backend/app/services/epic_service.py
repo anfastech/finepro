@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List
-from uuid import UUID
+
 
 from app.models.epic import Epic
 from app.models.enums import ActionType, EntityType
@@ -20,7 +20,7 @@ class EpicService:
         self.db = db
         self.activity_service = ActivityService(db)
     
-    async def get_by_id(self, epic_id: UUID) -> Optional[Epic]:
+    async def get_by_id(self, epic_id: str) -> Optional[Epic]:
         """Get epic by ID with tasks"""
         result = await self.db.execute(
             select(Epic)
@@ -29,7 +29,7 @@ class EpicService:
         )
         return result.scalar_one_or_none()
     
-    async def get_by_project(self, project_id: UUID) -> List[Epic]:
+    async def get_by_project(self, project_id: str) -> List[Epic]:
         """Get all epics in a project"""
         result = await self.db.execute(
             select(Epic)
@@ -38,7 +38,7 @@ class EpicService:
         )
         return list(result.scalars().all())
     
-    async def create(self, data: EpicCreate, user_id: UUID) -> Epic:
+    async def create(self, data: EpicCreate, user_id: str) -> Epic:
         """Create a new epic"""
         epic = Epic(
             project_id=data.project_id,
@@ -65,7 +65,7 @@ class EpicService:
         
         return epic
     
-    async def update(self, epic_id: UUID, data: EpicUpdate, user_id: UUID) -> Optional[Epic]:
+    async def update(self, epic_id: str, data: EpicUpdate, user_id: str) -> Optional[Epic]:
         """Update an epic"""
         epic = await self.get_by_id(epic_id)
         if not epic:
@@ -89,7 +89,7 @@ class EpicService:
         
         return epic
     
-    async def delete(self, epic_id: UUID, user_id: UUID) -> bool:
+    async def delete(self, epic_id: str, user_id: str) -> bool:
         """Delete an epic"""
         epic = await self.get_by_id(epic_id)
         if not epic:
