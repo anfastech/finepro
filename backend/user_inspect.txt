@@ -1,0 +1,5 @@
+--- Users ---
+User: ID=3es4e2ml781i, Name=Mohammed anfas K P, Email=kpanfas6@gmail.com, SupabaseID=ae51dbc9-0cea-4a34-83d2-acea0999209b
+
+--- Members ---
+Member: ID=5oddh81fq1, UserID=3es4e2ml781i (Mohammed anfas K P), WorkspaceID=ej025tl06vw0, Role=ADMIN

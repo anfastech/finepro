@@ -163,9 +163,16 @@ async def get_current_user_ws(
             
         if not user_id:
             logger.warning("get_current_user_ws: Token verification failed (both internal and Supabase)")
+            # Emergency log to file in case we can't see terminal
+            with open("ws_debug.log", "a") as f:
+                from datetime import datetime
+                f.write(f"{datetime.now()} - Auth failed for token: {token[:20]}...\n")
             return None
 
         logger.info(f"get_current_user_ws: Token verified. Looking up user_id: {user_id}")
+        with open("ws_debug.log", "a") as f:
+            from datetime import datetime
+            f.write(f"{datetime.now()} - Token verified for user_id: {user_id}\n")
 
         # Get user from database
         from app.database import AsyncSessionLocal
@@ -177,9 +184,13 @@ async def get_current_user_ws(
             
             if user:
                 logger.info(f"get_current_user_ws: Auth successful for user {user.email}")
+                with open("ws_debug.log", "a") as f:
+                    f.write(f"{datetime.now()} - Auth successful for {user.email}\n")
                 return user
             else:
                 logger.warning(f"get_current_user_ws: User {user_id} not found in DB")
+                with open("ws_debug.log", "a") as f:
+                    f.write(f"{datetime.now()} - User {user_id} not found in DB\n")
                 return None
                 
     except Exception as e:

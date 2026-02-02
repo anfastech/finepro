@@ -195,7 +195,11 @@ export function RealtimeProvider({ children, workspaceId }: RealtimeProviderProp
     // ============================================================================
 
     const connect = useCallback(async () => {
-        if (!workspaceId) return;
+        console.log("[Realtime] Attempting connect, workspaceId:", workspaceId);
+        if (!workspaceId) {
+            console.log("[Realtime] No workspaceId, skipping connection");
+            return;
+        }
 
         try {
             // Get Supabase session

@@ -42,7 +42,13 @@ class TypingRequest(BaseModel):
 
 @router.websocket("/connect/{token}")
 async def websocket_connect(websocket: WebSocket, token: str):
+    with open("ws_debug.log", "a") as f:
+        from datetime import datetime
+        f.write(f"{datetime.now()} - ENTERING websocket_connect with token: {token[:15]}...\n")
     """Main WebSocket connection endpoint"""
+    with open("ws_debug.log", "a") as f:
+        from datetime import datetime
+        f.write(f"{datetime.now()} - ENTERING websocket_connect with token: {token[:15]}...\n")
     try:
         # Authenticate user from token
         user = await get_current_user_ws(token, websocket)

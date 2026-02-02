@@ -21,7 +21,6 @@ class User(Base):
     workload_percentage = Column(Integer, default=0)  # current capacity used
     preferences = Column(JSON, default=dict)  # work preferences
     whatsapp_number = Column(String(50), nullable=True)
-    whatsapp_number = Column(String(50), nullable=True)
     notification_settings = Column(JSON, default=dict)
     has_password = Column(Boolean, default=False)
     last_sync = Column(DateTime(timezone=True), server_default=func.now())

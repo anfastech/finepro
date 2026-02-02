@@ -10,6 +10,7 @@ interface RealtimeWrapperProps {
 
 export function RealtimeWrapper({ children }: RealtimeWrapperProps) {
     const workspaceId = useWorkspaceId();
+    console.log("[RealtimeWrapper] workspaceId:", workspaceId);
 
     return (
         <RealtimeProvider workspaceId={workspaceId}>

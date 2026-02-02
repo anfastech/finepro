@@ -93,6 +93,9 @@ async def verify_supabase_token(token: str) -> Optional[Dict[str, Any]]:
                 return user_data
             else:
                 logger.error(f"Supabase verification failed: {response.status_code} - {response.text}")
+                with open("ws_debug.log", "a") as f:
+                    from datetime import datetime
+                    f.write(f"{datetime.now()} - Supabase verification failed: {response.status_code} - {response.text}\n")
                 return None
                 
     except Exception as e:
