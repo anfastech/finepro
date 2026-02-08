@@ -316,6 +316,7 @@ temp/
 !CONTRIBUTING.md
 !CHANGELOG.md
 !LICENSE
+!some-docs.md
 docs/build/
 
 ########################
